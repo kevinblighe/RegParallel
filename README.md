@@ -1,4 +1,4 @@
-# GenomewideCLogit
+# GenomewideTriosCLogit
 Reads in genomewide PLINK trios data to R and tests each SNP independently with interaction terms through a conditional logistic regression additive model (parallel processing enabled). Produces summary stats for each genotype, ANOVA and clogit P values, and odds ratios.
 
 NB - the original trios data for this project was converted to pseudocontrols using pseudocons: https://www.staff.ncl.ac.uk/richard.howey/pseudocons/index.html

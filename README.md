@@ -3,7 +3,7 @@ Reads in genomewide PLINK trios data to R and tests each SNP independently with 
 
 NB - the original trios data for this project was converted to pseudocontrols using pseudocons: https://www.staff.ncl.ac.uk/richard.howey/pseudocons/index.html
 
-Assumptions
+Assumptions:
 <ul>
   <li>PLINK data is uncompressed (<i>MyTrios.Chr[X].ped</i>, <i>MyTrios.Chr[X].map</i>, <i>MyTrios.Chr[X].fam</i>)</li>
   <li>PLINK data is divided up by chromosome, with sex chromosomes X and Y encoded as 23 and 24</li>
@@ -13,3 +13,19 @@ Assumptions
   <li>Major and Minor alleles across the dataset are already identified and stored in columns #2 and #3 of <i>MajorMinor.tsv</i>, respectively, with column #1 being the genotype identifier</li>
   <li>Extra phenotype data is stored in <i>Metadata.csv</i>, which has as the first 2 columns the IID and FID. In our example, extra phenotype data includes age,MaternalSmokingPregnancy, and EnvironmentalTobaccoSmoke</li>
   </ul>
+
+Summary stats produced:
+<ul>
+  <li>SNP</li>
+<li>MinorAllele</li>
+<li>MajorAllele</li>
+<li>Missingness</li>
+<li>MissingnessCases</li>
+<li>MissingnessControls</li>
+<li>NumCasesWithGenotype</li>
+<li>NumControlsWithGenotype</li>
+<li>TallyMinorAlleleCases</li>
+<li>TallyMinorAlleleControls</li>
+<li>FreqMinorAlleleCases</li>
+  <li>FreqMinorAlleleControls</li>
+</ul>

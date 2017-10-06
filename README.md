@@ -16,8 +16,8 @@ NB - the original trios data for this project was converted to pseudocontrols us
 
 <h1>Extra notes:</h1>
 <ul>
-  <li>Number CPU cores to use is set at the beginning of the script with <i>cpucores <- 16</i></li>
-  <li>adjustments in the model are made using age, gender, PC1, and PC2</li>
+  <li>Number of CPU cores to use is set at the beginning of the script with <i>cpucores <- 16</i></li>
+  <li>Adjustments in the model are made using age, gender, PC1, and PC2</li>
 </ul>
 
 <h1>Required packages:</h1>

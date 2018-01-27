@@ -1,5 +1,5 @@
 # GwasTriosCLogit
-Reads PLINK trios GWAS data into R and tests each SNP independently with interaction terms through an additive genotype model using conditional logistic regression (parallel processing enabled). Produces summary stats for each genotype, ANOVA and clogit P values, and odds ratios.
+Reads PLINK trios GWAS family data into R and tests each SNP independently with interaction terms through an additive genotype model using conditional logistic regression (parallel processing enabled). Produces summary stats for each genotype, ANOVA and clogit P values, and odds ratios.
 
 NB - the original trios data for this project was converted to pseudocontrols using pseudocons: https://www.staff.ncl.ac.uk/richard.howey/pseudocons/index.html
 

@@ -43,3 +43,5 @@ NB - the original trios data for this project was converted to pseudocontrols us
 <li>FreqMinorAlleleCases</li>
   <li>FreqMinorAlleleControls</li>
 </ul>
+<h1>Credits</h1>
+Kevin Blighe; Jessica Lasky-Su; Juan Celedón; Qi Yan

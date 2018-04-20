@@ -44,4 +44,8 @@ NB - the original trios data for this project was converted to pseudocontrols us
   <li>FreqMinorAlleleControls</li>
 </ul>
 <h1>Credits</h1>
-Kevin Blighe; Jessica Lasky-Su; Juan Celedón; Qi Yan
+<ul>
+  <li>Kevin Blighe (Brigham & Women's Hospital / Harvard Medical School)</li>
+  <li>Jessica Lasky-Su (Brigham & Women's Hospital / Harvard Medical School)</li>
+  <li>Juan Celedón (Children's Hospital of Pittsburgh)</li>
+  <li>Qi Yan (Children's Hospital of Pittsburgh)</li>

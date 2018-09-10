@@ -1,5 +1,5 @@
 # RegParallel
-Standard regression functions in R enabled for parallel processingn over large data-frames.
+Standard regression functions in R enabled for parallel processing over large data-frames.
 
 
 

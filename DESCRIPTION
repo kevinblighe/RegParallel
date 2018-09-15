@@ -1,0 +1,19 @@
+Package: StatGWAS
+Type: Package
+Title: Standard regression, correlation, and other functions in R enabled for parallel processing over large data-frames.
+Version: 0.99.0
+Author: Kevin Blighe, Jessica Lasky-Su
+Maintainer: Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
+Description:
+  Standard regression, correlation, and other functions in R enabled for parallel processing over large data-frames.
+License: GPL-3
+Depends:
+  R (>= 3.5.0)
+Imports:
+Suggests:
+  RUnit,
+  BiocGenerics,
+  knitr
+URL: https://github.com/kevinblighe/StatParallel
+biocViews: 
+VignetteBuilder: knitr

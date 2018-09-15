@@ -1,0 +1,9 @@
+export("StatParallel")
+export("CorParallel")
+export("RegParallel")
+
+import(BiocParallel)
+import(foreach)
+import(doMC)
+import(parallel)
+import(doParallel)

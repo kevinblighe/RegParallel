@@ -26,7 +26,11 @@ RegParallel(
 }
 
 \details{
+  In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major botteleneck in these is the amount of time that it takes to complete these analyses.
 
+  With <i>StatParallel</i>, any number of tests can be performed simultaneously.  On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds.
+
+  Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards models, ANOVA, and correlations. Also works for GWAS studies loaded into R as snpMatrix objects.
 }
 
 \value{
@@ -48,14 +52,16 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   rlogcounts <- assay(rlogcounts)
   modelling <- data.frame(colData(airway), t(rlogcounts))
 
-data <- modelling
+  rm(dds); rm(airway); rm(rlogcounts)
 
-res <- RegParallel(
-  data = data,
-  formula = "dex ~ cell",
-  variables = colnames(data)[10:ncol(data)],
-  blocksize = 1000,
-  cores = 26,
-  FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit')
-)
+  data <- modelling[,1:500]
+
+  res <- RegParallel(
+    data = data,
+    formula = "dex ~ cell",
+    variables = colnames(data)[10:ncol(data)],
+    blocksize = 200,
+    cores = 3,
+    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit')
+  )
 

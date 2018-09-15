@@ -6,7 +6,11 @@ RegParallel <- function(
   cores = 2,
   FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'))
 {
+  blocksize <- round(blocksize, 0)
+  message("Blocksize: ", blocksize)
 
+  cores <- round(cores, 0)
+  message("cores: ", cores * cores)
   require(BiocParallel)
 
   require(foreach)
@@ -23,7 +27,7 @@ RegParallel <- function(
   registerDoParallel(cores)
 
   require(data.table)
-
+  
   # determine number of blocks
   blocks <- floor((length(variables)) / blocksize) + 1
 

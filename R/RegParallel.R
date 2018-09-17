@@ -1,32 +1,49 @@
 RegParallel <- function(
   data,
   formula,
+  FUN = function(formula, data)
+    glm(formula = formula,
+      data = data,
+      family = binomial(link = 'logit'),
+      method = 'glm.fit'),
+  FUNtype = 'glm',
   variables = NULL,
-  blocksize = 500,
+  blocksize = 1000,
   cores = 2,
-  FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'))
+  nestedParallel = FALSE,
+  conflevel = 95)
 {
+  system <- Sys.info()['sysname']
+  message('System is: ', system)
+
   blocksize <- round(blocksize, 0)
-  message("Blocksize: ", blocksize)
+  message('Blocksize: ', blocksize)
 
-  cores <- round(cores, 0)
-  message("cores: ", cores * cores)
-  require(BiocParallel)
+  message('Cores / Threads: ', cores)
 
-  require(foreach)
+  if (nestedParallel == TRUE) {
+    message('Nesting enabled. Total potential cores + forked threads is ', cores * cores)
+  }
 
-  require(doMC)
-  registerDoMC(cores)
+  library(BiocParallel, quietly = TRUE)
 
-  require(parallel)
-  options("mc.cores"=cores)
+  library(foreach, quietly = TRUE)
 
-  # UNIX
-  require(doParallel)
-  #registerDoParallel(makeCluster(detectCores() - 1))
+  library(parallel, quietly = TRUE)
+
+  if (system == 'Windows') {
+    cl <- makeCluster(getOption('cl.cores', cores))
+  } else {
+    options('mc.cores' = cores)
+
+    library(doMC, quietly = TRUE)
+    registerDoMC(cores)
+  }
+
+  library(doParallel, quietly = TRUE)
   registerDoParallel(cores)
 
-  require(data.table)
+  library(data.table, quietly = TRUE)
   
   # determine number of blocks
   blocks <- floor((length(variables)) / blocksize) + 1
@@ -34,14 +51,27 @@ RegParallel <- function(
   # create en empty list to hold the formulae
   formula.list <- list()
 
-  # store each possible formula in the list
-  for (i in 1:length(variables)) {
-    formula.list[[i]] <- as.formula(paste(formula, " + ", variables[i], sep=""))
+  covs <- gsub(' ', '', unlist(strsplit(formula, '\\+|~')))
+  covs <- covs[-grep('\\[x\\]', covs)]
+  message('Variables included in model:')
+  for (i in 1:length(covs)) {
+    message('-- ', covs[i])
   }
 
-  startIndex <- 9
+  # store each possible formula in the list
+  for (i in 1:length(variables)) {
+    formula.list[[i]] <- as.formula(gsub('\\[x\\]', variables[i], formula))
+  }
 
-  basemodel <- FUN(formula = as.formula(formula), data = data)
+  five <- unlist(head(formula.list), 5)
+  message("First 5 formulae:")
+  for (i in 1:5) {
+    message('-- ', five[i])
+  }
+
+  startIndex <- length(covs)
+
+  data <- data[,which(colnames(data) %in% c(covs, variables))]
 
   foreach(l = 1:blocks, .combine = rbind, .multicombine = TRUE, .inorder = FALSE, .packages=c("data.table", "doParallel", "parallel", "doMC", "foreach", "BiocParallel")) %dopar% {
     # first block - will be executed just once
@@ -49,24 +79,62 @@ RegParallel <- function(
       message(paste("Processing ", blocksize, " formulae, batch ", l, " of ", blocks, sep=""))
       message(paste("Index1: 1; ", "Index2: ", (blocksize*l), sep=""))
       df <- data[,c(which(colnames(data) %in% c("dex", "cell")), startIndex + (1:(blocksize*l)))]
-      models <- mclapply(formula.list[1:(blocksize*l)], function(f) FUN(formula = f, data = df))
+
+      if (nestedParallel == TRUE) {
+        if (system == "Windows") {
+            models <- parLapply(cl, formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        } else {
+            models <- mclapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        }
+      } else if (nestedParallel == FALSE) {
+        models <- lapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+      } else {
+        stop("Invalid value for argument nestedParallel. Must be TRUE/FALSE")
+      }
+
       names(models) <- variables[1:(blocksize*l)]
 
-      #If any models failed, detect them and replace with the base model
-      wObjects <- mclapply(models, function(x) if (is.null(names(x))) { x <- basemodel } else {x} )
+      # convert to data frames
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, models, function(x) data.frame(rownames(x), x))
+      } else {
+        wObjects <- mclapply(models, function(x) data.frame(rownames(x), x))
+      }
 
-      #Extract information from the model and store in a new list
-      wObjects <- mclapply(wObjects, function(x) data.frame(rownames(summary(x)$coefficients), summary(x)$coefficients))
+      # remove intercept and covariates from final output
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      } else {
+        wObjects <- mclapply(wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      }
 
-      # remove intercept and covariates from final output (OPTIONAL)
-      wObjects <- mclapply(wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      # detect failed models (will have 0 dimensions or return 'try' error)
+      nullindices <- c(
+        which(mapply(function(x) nrow(x)==0, wObjects)==TRUE),
+        which(mapply(inherits, wObjects, 'try-error'))
+      )
+      for (i in nullindices) {
+        wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], NA, NA, NA, NA)))
+      }
 
-      #Convert the list into a data frame for writing
-      wObject <- do.call(rbind, mclapply(wObjects, data.frame, stringsAsFactors=FALSE))
-      wObject <- data.frame(gsub("\\.[a-zA-Z0-9_():]*", "", rownames(wObject)), wObject)
-      wObject[,2] <- gsub("factor", "", wObject[,2])
+      #Convert the list into a data table
+      wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
 
-      return(data.table(wObject[,-c(1)]))
+      # set colnames
+      colnames(wObjects) <- c("Variable", "Beta", "StandardError", "Z", "P")
+
+      wObjects$Variable <- as.character(wObjects$Variable)
+      wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
+      wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
+      wObjects$Z <- as.numeric(as.character(wObjects$Z))
+      wObjects$P <- as.numeric(as.character(wObjects$P))
+
+      # calculate OR and confidence intervals
+      wObjects$OR <- exp(wObjects[,'Beta'])
+      wObjects$ORlower <- wObjects$OR * exp(qnorm(((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
+      wObjects$ORupperOR <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
+
+      return(wObjects)
     }
 
     # final block - will be executed just once
@@ -74,24 +142,62 @@ RegParallel <- function(
       message(paste("Processing final batch ", l, " of ", blocks, sep=""))
       message(paste("Index1: ", (1+(blocksize*(l-1))), "; ", "Index2: ", length(formula.list), sep=""))
       df <- data[,c(which(colnames(data) %in% c("dex", "cell")), startIndex + (((1+(blocksize*(l-1)))):(length(formula.list))))]
-      models <- mclapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(x) glm(x, df, family=binomial(link='logit')))
+
+      if (nestedParallel == TRUE) {
+        if (system == "Windows") {
+          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        } else {
+          models <- mclapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        }
+      } else if (nestedParallel == FALSE) {
+        models <- lapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+      } else {
+        stop("Invalid value for argument nestedParallel. Must be TRUE/FALSE")
+      }
+
       names(models) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
-      #If any models failed, detect them and replace with the base model
-      wObjects <- mclapply(models, function(x) if (is.null(names(x))) { x <- basemodel } else {x} )
+      # convert to data frames
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, models, function(x) data.frame(rownames(x), x))
+      } else {
+        wObjects <- mclapply(models, function(x) data.frame(rownames(x), x))
+      }
 
-      #Extract information from the model and store in a new list
-      wObjects <- mclapply(wObjects, function(x) data.frame(rownames(summary(x)$coefficients), summary(x)$coefficients))
+      # remove intercept and covariates from final output
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      } else {
+        wObjects <- mclapply(wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      }
 
-      # remove intercept and covariates from final output (OPTIONAL)
-      wObjects <- mclapply(wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      # detect failed models (will have 0 dimensions or return 'try' error)
+      nullindices <- c(
+        which(mapply(function(x) nrow(x)==0, wObjects)==TRUE),
+        which(mapply(inherits, wObjects, 'try-error'))
+      )
+      for (i in nullindices) {
+        wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], NA, NA, NA, NA)))
+      }
 
-      #Convert the list into a data frame for writing
-      wObject <- do.call(rbind, mclapply(wObjects, data.frame, stringsAsFactors=FALSE))
-      wObject <- data.frame(gsub("\\.[a-zA-Z0-9_():]*", "", rownames(wObject)), wObject)
-      wObject[,2] <- gsub("factor", "", wObject[,2])
+      #Convert the list into a data table
+      wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
 
-      return(data.table(wObject[,-c(1)]))
+      # set colnames
+      colnames(wObjects) <- c("Variable", "Beta", "StandardError", "Z", "P")
+
+      wObjects$Variable <- as.character(wObjects$Variable)
+      wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
+      wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
+      wObjects$Z <- as.numeric(as.character(wObjects$Z))
+      wObjects$P <- as.numeric(as.character(wObjects$P))
+
+      # calculate OR and confidence intervals
+      wObjects$OR <- exp(wObjects[,'Beta'])
+      wObjects$ORlower <- wObjects$OR * exp(qnorm(((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
+      wObjects$ORupperOR <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
+
+      return(wObjects)
     }
 
     # any other blocks - executed any number of times between first and final block
@@ -99,24 +205,66 @@ RegParallel <- function(
       message(paste("Processing ", blocksize, " formulae, batch ", l, " of ", blocks, sep=""))
       message(paste("Index1: ", (1+(blocksize*(l-1))), "; ", "Index2: ", (blocksize*l), sep=""))
       df <- data[,c(which(colnames(data) %in% c("dex", "cell")), startIndex + ((1+(blocksize*(l-1))):(blocksize*l)))]
-      models <- mclapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) FUN(formula = f, data = df))
+
+      if (nestedParallel == TRUE) {
+        if (system == "Windows") {
+          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        } else {
+          models <- mclapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        } 
+      } else if (nestedParallel == FALSE) {
+        models <- lapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+      } else {
+        stop("Invalid value for argument nestedParallel. Must be TRUE/FALSE")
+      }
+
       names(models) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
-      #If any models failed, detect them and replace with the base model
-      wObjects <- mclapply(models, function(x) if (is.null(names(x))) { x <- basemodel } else {x} )
+      # convert to data frames
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, models, function(x) data.frame(rownames(x), x))
+      } else {
+        wObjects <- mclapply(models, function(x) data.frame(rownames(x), x))
+      }
 
-      #Extract information from the model and store in a new list
-      wObjects <- mclapply(wObjects, function(x) data.frame(rownames(summary(x)$coefficients), summary(x)$coefficients))
+      # remove intercept and covariates from final output
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      } else {
+        wObjects <- mclapply(wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      }
 
-      # remove intercept and covariates from final output (OPTIONAL)
-      wObjects <- mclapply(wObjects, function(x) x[grep("Intercept|^cell", rownames(x), invert=TRUE),])
+      # detect failed models (will have 0 dimensions or return 'try' error)
+      nullindices <- c(
+        which(mapply(function(x) nrow(x)==0, wObjects)==TRUE),
+        which(mapply(inherits, wObjects, 'try-error'))
+      )
+      for (i in nullindices) {
+        wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], NA, NA, NA, NA)))
+      }
 
-      #Convert the list into a data frame for writing
-      wObject <- do.call(rbind, mclapply(wObjects, data.frame, stringsAsFactors=FALSE))
-      wObject <- data.frame(gsub("\\.[a-zA-Z0-9_():]*", "", rownames(wObject)), wObject)
-      wObject[,2] <- gsub("factor", "", wObject[,2])
+      #Convert the list into a data table
+      wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
 
-      return(data.table(wObject[,-c(1)]))
+      # set colnames
+      colnames(wObjects) <- c("Variable", "Beta", "StandardError", "Z", "P")
+
+      wObjects$Variable <- as.character(wObjects$Variable)
+      wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
+      wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
+      wObjects$Z <- as.numeric(as.character(wObjects$Z))
+      wObjects$P <- as.numeric(as.character(wObjects$P))
+
+      # calculate OR and confidence intervals
+      wObjects$OR <- exp(wObjects[,'Beta'])
+      wObjects$ORlower <- wObjects$OR * exp(qnorm(((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
+      wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
+
+      return(wObjects)
     }
   }
+
+  #if (system == 'Windows') {
+  #  stopCluster(cl)
+  #}
 }

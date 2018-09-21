@@ -58,7 +58,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
 
   rm(dds); rm(airway); rm(rlogcounts)
 
-  data <- modelling[,1:20000]
+  data <- modelling[,1:4000]
 
   res <- RegParallel(
     data = data,
@@ -66,21 +66,27 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'),
     FUNtype = 'glm',
     variables = colnames(data)[10:ncol(data)],
-    blocksize = 3127,
-    cores = 6,
+    blocksize = 700,
+    cores = 2,
     nestedParallel = TRUE,
-    conflevel = 95
+    conflevel = 99,
+    removeNULL = TRUE
   )
 
-  res <- RegParallel(
+  require(survival)
+  data <- modelling[,1:3000]
+  data$time <- c(12,6,13,5,12,7,21,5)
+  data$alive <- c(1,0,1,0,1,0,1,0)
+  res1 <- RegParallel(
     data = data,
-    formula = 'dex~[x]+cell',
-    FUN = function(formula, data) coxph(formula = formula, data = data),
-    FUNtype = 'coxph'
-    variables = colnames(data)[10:ncol(data)],
-    blocksize = 10000,
-    cores = 6,
+    formula = 'Surv(alive) ~ [x] + strata(cell)',
+    FUN = function(formula, data) coxph(formula = formula, data = data, ties = 'breslow', singular.ok = TRUE),
+    FUNtype = 'coxph',
+    variables = colnames(modelling[,10:3000]),
+    blocksize = 1000,
+    cores = 2,
     nestedParallel = TRUE,
-    conflevel = 95
+    removeNULL = FALSE
   )
 }
+

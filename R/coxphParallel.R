@@ -17,7 +17,17 @@ coxphParallel <- function(
   # strip out information from the model to parse the variable names
   covs <- gsub("Surv\\(|\\)|strata\\(", "", formula)
   covs <- gsub(' ', '', unlist(strsplit(covs, '\\+|~|,')))
-  covs <- covs[-grep('\\[x\\]', covs)]
+
+  # determine position of variable
+  if (grep('\\[\\*\\]', covs) == 1) {
+    xy <- 'y'
+    message('Variable being tested is a dependent / y variable')
+  } else {
+    xy <- 'x'
+    message('Variable being tested is a predictor / x variable')
+  }
+
+  covs <- covs[-grep('\\[\\*\\]', covs)]
   message('Variables included in model:')
   for (i in 1:length(covs)) {
     message('-- ', covs[i])
@@ -25,7 +35,7 @@ coxphParallel <- function(
 
   # store each possible formula in the list
   for (i in 1:length(variables)) {
-    formula.list[[i]] <- as.formula(gsub('\\[x\\]', variables[i], formula))
+    formula.list[[i]] <- as.formula(gsub('\\[\\*\\]', variables[i], formula))
   }
 
   five <- unlist(head(formula.list), 5)
@@ -75,11 +85,13 @@ coxphParallel <- function(
         wObjects <- mclapply(wObjects, function(x) data.frame(rownames(x), x))
       }
 
-      # remove intercept and covariates from final output
+      cols <- ncol(wObjects[[1]])
+
+      # convert to data frames
       if (system == "Windows") {
-        wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c("Intercept", covs), collapse="|^"), rownames(x), invert=TRUE),])
+        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       } else {
-        wObjects <- mclapply(wObjects, function(x) x[grep(paste(c("Intercept", covs), collapse="|^"), rownames(x), invert=TRUE),])
+        wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       }
 
       # extract p values specific to coxph
@@ -89,17 +101,16 @@ coxphParallel <- function(
         p <- mclapply(models, function(x) data.frame(x$logtest, x$waldtest, x$sctest)["pvalue",])
       }
 
-      # detect failed models (will have 0 dimensions or return 'try' error)
+      # detect failed models (return 'try' error)
       nullindices <- c(
-        which(mapply(function(x) nrow(x)==0, wObjects)==TRUE),
         which(mapply(inherits, wObjects, 'try-error'))
       )
-      if (removeNULL == TRUE) {
+      if ((removeNULL == TRUE) && length(nullindices) > 0) {
         wObjects <- wObjects[-nullindices]
         p <- p[-nullindices]
       } else {
         for (i in nullindices) {
-          wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], NA, NA, NA, NA, NA)))
+          wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], rep(NA, cols))))
           p[[i]] <- data.frame(t(c(names(p)[i], NA, NA, NA)))
         }
       }
@@ -162,11 +173,11 @@ coxphParallel <- function(
 
       names(models) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
-      # extract coefficients
+      # convert to data frames
       if (system == "Windows") {
-        wObjects <- parLapply(cl, models, function(x) x$coefficients)
+        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       } else {
-        wObjects <- mclapply(models, function(x) x$coefficients)
+        wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       }
 
       # convert to data frames
@@ -175,6 +186,8 @@ coxphParallel <- function(
       } else {
         wObjects <- mclapply(wObjects, function(x) data.frame(rownames(x), x))
       }
+
+      cols <- ncol(wObjects[[1]])
 
       # remove intercept and covariates from final output
       if (system == "Windows") {
@@ -190,17 +203,16 @@ coxphParallel <- function(
         p <- mclapply(models, function(x) data.frame(x$logtest, x$waldtest, x$sctest)["pvalue",])
       }
 
-      # detect failed models (will have 0 dimensions or return 'try' error)
+      # detect failed models (return 'try' error)
       nullindices <- c(
-        which(mapply(function(x) nrow(x)==0, wObjects)==TRUE),
         which(mapply(inherits, wObjects, 'try-error'))
       )
-      if (removeNULL == TRUE) {
+      if ((removeNULL == TRUE) && length(nullindices) > 0) {
         wObjects <- wObjects[-nullindices]
         p <- p[-nullindices]
       } else {
         for (i in nullindices) {
-          wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], NA, NA, NA, NA, NA)))
+          wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], rep(NA, cols))))
           p[[i]] <- data.frame(t(c(names(p)[i], NA, NA, NA)))
         }
       }
@@ -262,11 +274,11 @@ coxphParallel <- function(
 
       names(models) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
-      # extract coefficients
+      # convert to data frames
       if (system == "Windows") {
-        wObjects <- parLapply(cl, models, function(x) x$coefficients)
+        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       } else {
-        wObjects <- mclapply(models, function(x) x$coefficients)
+        wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       }
 
       # convert to data frames
@@ -275,6 +287,8 @@ coxphParallel <- function(
       } else {
         wObjects <- mclapply(wObjects, function(x) data.frame(rownames(x), x))
       }
+
+      cols <- ncol(wObjects[[1]])
 
       # remove intercept and covariates from final output
       if (system == "Windows") {
@@ -290,17 +304,16 @@ coxphParallel <- function(
         p <- mclapply(models, function(x) data.frame(x$logtest, x$waldtest, x$sctest)["pvalue",])
       }
 
-      # detect failed models (will have 0 dimensions or return 'try' error)
+      # detect failed models (return 'try' error)
       nullindices <- c(
-        which(mapply(function(x) nrow(x)==0, wObjects)==TRUE),
         which(mapply(inherits, wObjects, 'try-error'))
       )
-      if (removeNULL == TRUE) {
+      if ((removeNULL == TRUE) && length(nullindices) > 0) {
         wObjects <- wObjects[-nullindices]
         p <- p[-nullindices]
       } else {
         for (i in nullindices) {
-          wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], NA, NA, NA, NA, NA)))
+          wObjects[[i]] <- data.frame(t(c(names(wObjects)[i], rep(NA, cols))))
           p[[i]] <- data.frame(t(c(names(p)[i], NA, NA, NA)))
         }
       }

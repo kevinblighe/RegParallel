@@ -14,11 +14,22 @@ RegParallel <- function(
   conflevel = 95,
   removeNULL = TRUE)
 {
+  message('##############################\n#RegParallel\n##############################\n')
+
   system <- Sys.info()['sysname']
   message('System is: ', system)
 
   blocksize <- round(blocksize, 0)
   message('Blocksize: ', blocksize)
+
+  # remove and report data with all 0
+  zeros <- which(mapply(function(x) all(x == 0), data[variables]) == TRUE)
+  if (length(zeros) > 0 ) {
+    message(length(zeros), ' variables have all zeros! Removing these...')
+    data <- data[,-which(colnames(data) %in% variables[zeros])]
+    variables <- variables[-zeros]
+    message('Now testing ', length(variables), ' variables')
+  }
 
   if (blocksize > length(variables)) {
     stop(paste("blocksize is greater than number of variables to test.",
@@ -71,7 +82,21 @@ RegParallel <- function(
       conflevel = conflevel,
       removeNULL = removeNULL,
       cluster = cl)
+  } else if (FUNtype == 'lm') {
+    res <- lmParallel(
+      data = data,
+      formula = formula,
+      FUN = FUN,
+      variables = variables,
+      blocksize = blocksize,
+      blocks = blocks,
+      system = system,
+      nestedParallel = nestedParallel,
+      conflevel = conflevel,
+      removeNULL = removeNULL,
+      cluster = cl)
   } else if (FUNtype == 'coxph') {
+
     res <- coxphParallel(
       data = data,
       formula = formula,

@@ -47,6 +47,9 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
 
 \examples{
 
+  options(scipen=10)
+  options(digits=6)
+
   library(airway)
   data("airway")
   library("DESeq2")
@@ -59,10 +62,9 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   rm(dds); rm(airway); rm(rlogcounts)
 
   data <- modelling[,1:4000]
-
-  res <- RegParallel(
+  res1 <- RegParallel(
     data = data,
-    formula = 'dex ~ [x] + cell',
+    formula = 'dex ~ cell + [*]',
     FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'),
     FUNtype = 'glm',
     variables = colnames(data)[10:ncol(data)],
@@ -70,6 +72,48 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     cores = 2,
     nestedParallel = TRUE,
     conflevel = 99,
+    removeNULL = FALSE
+  )
+
+  # test
+  m <- glm(dex ~ cell + ENSG00000000938, data = data, family = binomial(link = 'logit'), method = 'glm.fit')
+  res1[which(res1$Variable == 'ENSG00000000938'),1:6]
+  (summary(m)$coefficients)['ENSG00000000938',]
+  res1[which(res1$Variable == 'ENSG00000000938'),7:9]
+  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.99)))['ENSG00000000938',]
+
+  m <- glm(dex ~ cell + ENSG00000111785, data = data, family = binomial(link = 'logit'), method = 'glm.fit')
+  res1[which(res1$Variable == 'ENSG00000111785'),1:6]
+  (summary(m)$coefficients)['ENSG00000111785',]
+  res1[which(res1$Variable == 'ENSG00000111785'),7:9]
+  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.99)))['ENSG00000111785',]
+
+
+  data <- modelling[,1:4000]
+  res2 <- RegParallel(
+    data = data,
+    formula = '[*] ~ dex + cell',
+    FUN = function(formula, data) glm(formula = formula, data = data, method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = colnames(data)[10:ncol(data)],
+    blocksize = 700,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 95,
+    removeNULL = TRUE
+  )
+
+  data <- modelling[,1:4000]
+  res3 <- RegParallel(
+    data = data,
+    formula = '[*] ~ dex + cell',
+    FUN = function(formula, data) lm(formula = formula, data = data),
+    FUNtype = 'lm',
+    variables = colnames(data)[10:ncol(data)],
+    blocksize = 700,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 95,
     removeNULL = TRUE
   )
 
@@ -79,7 +123,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   data$alive <- c(1,0,1,0,1,0,1,0)
   res1 <- RegParallel(
     data = data,
-    formula = 'Surv(alive) ~ [x] + cell',
+    formula = 'Surv(alive) ~ [*] + cell',
     FUN = function(formula, data) coxph(formula = formula, data = data, ties = 'breslow', singular.ok = TRUE),
     FUNtype = 'coxph',
     variables = colnames(modelling[,10:3000]),

@@ -62,7 +62,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
 
   res <- RegParallel(
     data = data,
-    formula = 'dex ~ [x]+cell',
+    formula = 'dex ~ [x] + cell',
     FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'),
     FUNtype = 'glm',
     variables = colnames(data)[10:ncol(data)],
@@ -79,13 +79,14 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   data$alive <- c(1,0,1,0,1,0,1,0)
   res1 <- RegParallel(
     data = data,
-    formula = 'Surv(alive) ~ [x] + strata(cell)',
+    formula = 'Surv(alive) ~ [x] + cell',
     FUN = function(formula, data) coxph(formula = formula, data = data, ties = 'breslow', singular.ok = TRUE),
     FUNtype = 'coxph',
     variables = colnames(modelling[,10:3000]),
     blocksize = 1000,
     cores = 2,
     nestedParallel = TRUE,
+    conflevel = 99,
     removeNULL = FALSE
   )
 }

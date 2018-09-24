@@ -1,4 +1,4 @@
-lmParallel <- function(
+bayesglmParallel <- function(
   data,
   formula.list,
   FUN,
@@ -79,12 +79,21 @@ lmParallel <- function(
       wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
 
       # set colnames
-      colnames(wObjects) <- c('Variable', 'Term', 'Beta', 'StandardError', 't', 'P')
+      # detect if the y variable in a glm is a continous variable (model will contain t stat; otherwise, Z)
+      if (any(grepl('^t\\.value$', colnames(wObjects))) == TRUE) {
+        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "t", "P")
+      } else {
+        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P")
+      }
 
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
-      wObjects$t <- as.numeric(as.character(wObjects$t))
+      if (any(grepl('^t$', colnames(wObjects))) == TRUE) {
+        wObjects$t <- as.numeric(as.character(wObjects$t))
+      } else {
+        wObjects$Z <- as.numeric(as.character(wObjects$Z))
+      }
       wObjects$P <- as.numeric(as.character(wObjects$P))
 
       # calculate OR and confidence intervals
@@ -93,8 +102,13 @@ lmParallel <- function(
       wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
 
       # change Inf and NaN to NA
-      wObjects$t[is.infinite(wObjects$t)] <- NA
-      wObjects$t[wObjects$t == "NaN"] <- NA
+      if (any(grepl('^t$', colnames(wObjects)) == TRUE)) {
+        wObjects$t[is.infinite(wObjects$t)] <- NA
+        wObjects$t[wObjects$t == "NaN"] <- NA
+      } else {
+        wObjects$Z[is.infinite(wObjects$Z)] <- NA
+        wObjects$Z[wObjects$Z == "NaN"] <- NA
+      }
       wObjects$P[is.infinite(wObjects$P)] <- NA
       wObjects$P[wObjects$P == "NaN"] <- NA
       wObjects$OR[is.infinite(wObjects$OR)] <- NA
@@ -175,12 +189,21 @@ lmParallel <- function(
       wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
 
       # set colnames
-      colnames(wObjects) <- c('Variable', 'Term', 'Beta', 'StandardError', 't', 'P')
+      # detect if the y variable in a glm is a continous variable (model will contain t stat; otherwise, Z)
+      if (any(grepl('^t\\.value$', colnames(wObjects))) == TRUE) {
+        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "t", "P")
+      } else {
+        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P")
+      }
 
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
-      wObjects$t <- as.numeric(as.character(wObjects$t))
+      if (any(grepl('^t$', colnames(wObjects))) == TRUE) {
+        wObjects$t <- as.numeric(as.character(wObjects$t))
+      } else {
+        wObjects$Z <- as.numeric(as.character(wObjects$Z))
+      }
       wObjects$P <- as.numeric(as.character(wObjects$P))
 
       # calculate OR and confidence intervals
@@ -189,8 +212,13 @@ lmParallel <- function(
       wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
 
       # change Inf and NaN to NA
-      wObjects$t[is.infinite(wObjects$t)] <- NA
-      wObjects$t[wObjects$t == "NaN"] <- NA
+      if (any(grepl('^t$', colnames(wObjects)) == TRUE)) {
+        wObjects$t[is.infinite(wObjects$t)] <- NA
+        wObjects$t[wObjects$t == "NaN"] <- NA
+      } else {
+        wObjects$Z[is.infinite(wObjects$Z)] <- NA
+        wObjects$Z[wObjects$Z == "NaN"] <- NA
+      }
       wObjects$P[is.infinite(wObjects$P)] <- NA
       wObjects$P[wObjects$P == "NaN"] <- NA
       wObjects$OR[is.infinite(wObjects$OR)] <- NA
@@ -270,12 +298,21 @@ lmParallel <- function(
       wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
 
       # set colnames
-      colnames(wObjects) <- c('Variable', 'Term', 'Beta', 'StandardError', 't', 'P')
+      # detect if the y variable in a glm is a continous variable (model will contain t stat; otherwise, Z)
+      if (any(grepl('^t\\.value$', colnames(wObjects))) == TRUE) {
+        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "t", "P")
+      } else {
+        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P")
+      }
 
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
-      wObjects$t <- as.numeric(as.character(wObjects$t))
+      if (any(grepl('^t$', colnames(wObjects))) == TRUE) {
+        wObjects$t <- as.numeric(as.character(wObjects$t))
+      } else {
+        wObjects$Z <- as.numeric(as.character(wObjects$Z))
+      }
       wObjects$P <- as.numeric(as.character(wObjects$P))
 
       # calculate OR and confidence intervals
@@ -284,8 +321,13 @@ lmParallel <- function(
       wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
 
       # change Inf and NaN to NA
-      wObjects$t[is.infinite(wObjects$t)] <- NA
-      wObjects$t[wObjects$t == "NaN"] <- NA
+      if (any(grepl('^t$', colnames(wObjects)) == TRUE)) {
+        wObjects$t[is.infinite(wObjects$t)] <- NA
+        wObjects$t[wObjects$t == "NaN"] <- NA
+      } else {
+        wObjects$Z[is.infinite(wObjects$Z)] <- NA
+        wObjects$Z[wObjects$Z == "NaN"] <- NA
+      }
       wObjects$P[is.infinite(wObjects$P)] <- NA
       wObjects$P[wObjects$P == "NaN"] <- NA
       wObjects$OR[is.infinite(wObjects$OR)] <- NA

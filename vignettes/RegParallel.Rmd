@@ -1,0 +1,361 @@
+---
+title: "Standard regression functions in R enabled for parallel processing over large data-frames"
+author: "Kevin Blighe"
+date: "`r Sys.Date()`"
+package: "`r packageVersion('RegParallel')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+    highlight: tango
+fig_width: 7
+bibliography: library.bib
+vignette: >
+    %\VignetteIndexEntry{Standard regression functions in R enabled for parallel processing over large data-frames}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+    %\usepackage[utf8]{inputenc}
+---
+
+# Introduction.
+
+In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major botteleneck in these is the amount of time that it takes to complete these analyses.
+
+With <i>RegParallel</i>, any number of tests can be performed simultaneously.  On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing.
+
+Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.
+
+
+```{r, echo=FALSE}
+
+    library(knitr)
+
+    opts_chunk$set(tidy = TRUE, message = FALSE, warning = FALSE)
+
+```
+
+# Installation.
+
+## 1. Download the package from Bioconductor.
+
+```{r getPackage, eval=FALSE}
+
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+
+        install.packages("BiocManager")
+
+        BiocManager::install("RegParallel")
+
+```
+
+Note: to install development version:
+
+```{r getPackageDevel, eval=FALSE}
+
+    devtools::install_github("kevinblighe/RegParallel")
+
+```
+
+## 2. Load the package into R session.
+
+```{r Load, message=FALSE}
+
+    library(RegParallel)
+
+```
+
+
+# Quick start.
+
+For this example, we will follow the tutorial (from Section 3.1) of [RNA-seq workflow: gene-level
+exploratory analysis and differential expression](http://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html). Specifically, we will load the 'airway' data, where different airway smooth muscle cells were treated with dexamethasone.
+
+```{r}
+
+    library(airway)
+
+    library(magrittr)
+
+    data('airway')
+
+    airway$dex %<>% relevel('untrt')
+
+```
+
+Produce regularised log counts on which we will run our model:
+
+```{r}
+
+    library(DESeq2)
+
+    dds <- DESeqDataSet(airway, design = ~ dex)
+    dds <- DESeq(dds, betaPrior=FALSE)
+    rldcounts <- assay(rlog(dds, blind=TRUE))
+    glmdata <- data.frame(colData(airway), t(rldcounts))
+
+```
+
+## Perform the most basic regression analysis.
+
+For the most ..........
+
+```{r glmParallel}
+
+    res1 <- RegParallel(
+      data = glmdata,
+      formula = 'dex ~ [*]',
+      FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'),
+      FUNtype = 'glm',
+      variables = colnames(glmdata)[10:ncol(glmdata)],
+      blocksize = 1000,
+      cores = 2,
+      nestedParallel = TRUE,
+      conflevel = 99,
+      excludeTerms = c('dex'),
+      excludeIntercept = FALSE
+    )
+
+    res1
+
+```
+
+# Advanced features.
+
+
+
+## Perform a linear regression.
+
+In this exam...
+
+```{r lmParallel}
+
+  lmdata <- glmdata[,1:2000]
+
+  res2 <- RegParallel(
+    data = lmdata,
+    formula = '[*] ~ dex + cell',
+    FUN = function(formula, data) glm(formula = formula, data = data, method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = colnames(lmdata)[10:ncol(lmdata)],
+    blocksize = 400,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 99,
+    excludeTerms = c('dex', 'cell'),
+    excludeIntercept = TRUE
+  )
+
+  res3 <- RegParallel(
+    data = lmdata,
+    formula = '[*] ~ dex + cell',
+    FUN = function(formula, data) lm(formula = formula, data = data),
+    FUNtype = 'lm',
+    variables = colnames(lmdata)[10:ncol(lmdata)],
+    blocksize = 400,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 99,
+    excludeTerms = c('dex', 'cell'),
+    excludeIntercept = TRUE
+  )
+
+  res2
+  res3
+
+```
+
+## Survival analysis via Cox Proportional Hazards regression.
+
+For this example, we will load breast cancer gene expression data with recurrence free survival (RFS) from [Gene Expression Profiling in Breast Cancer: Understanding the Molecular Basis of Histologic Grade To Improve Prognosis](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE2990). Specifically, we will encode each gene's expresion into Low|Mid|High based on Z-scores and compare these against RFS while adjusting for tumour grade in a Cox Proportional Hazards model.
+
+```{r ex2}
+  library(Biobase)
+  library(GEOquery)
+
+  # load series and platform data from GEO
+  gset <- getGEO("GSE2990", GSEMatrix =TRUE, getGPL=FALSE)
+
+  x <- exprs(gset[[1]])
+
+  x <- x[-grep('^AFFX', rownames(x)),]
+  x <- scale(x)
+
+  highExpr <- 1.0
+  lowExpr <- -1.0
+
+  x <- data.frame(t(do.call(rbind, lapply(data.frame(x), function(x) ifelse(x >= highExpr, 'High', ifelse(x <= lowExpr, 'Low', 'Mid'))))), row.names = rownames(x))
+
+  idx <- which(colnames(pData(gset[[1]])) %in% c('age:ch1', 'distant rfs:ch1', 'er:ch1', 'ggi:ch1', 'grade:ch1', 'node:ch1', 'size:ch1', 'time rfs:ch1'))
+  metadata <- data.frame(pData(gset[[1]])[,idx], row.names = rownames(pData(gset[[1]])))
+  discard <- apply(metadata, 1, function(x) any(is.na(x)))
+
+  metadata <- metadata[!discard,]
+  x <- x[,which(colnames(x) %in% rownames(metadata))]
+
+  all((colnames(x) == rownames(metadata)) == TRUE)
+
+  coxdata <- data.frame(metadata, t(x))
+
+  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER', 'GGI', 'Grade', 'Node', 'Size', 'Time.RFS')
+
+  coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
+  coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
+  coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
+  coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
+  coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
+
+  for (i in 9:ncol(coxdata)) {
+    coxdata[,i] <- factor(coxdata[,i], levels = c('Mid', 'Low', 'High'))
+  }
+
+```
+
+```{r coxphParallel}
+
+  library(survival)
+
+  res4 <- RegParallel(
+    data = coxdata,
+    formula = 'Surv(Time.RFS, Distant.RFS) ~ [*] + Grade',
+    FUN = function(formula, data) coxph(formula = formula, data = data, ties = 'breslow', singular.ok = TRUE),
+    FUNtype = 'coxph',
+    variables = colnames(coxdata)[9:ncol(coxdata)],
+    blocksize = 1000,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 95,
+    excludeTerms = c('Grade')
+  )
+
+  res4 <- res4[!is.na(res4$P),]
+
+  res4
+
+```
+
+```{r annotation}
+
+  res4 <- res4[order(res4$P, decreasing = FALSE),]
+
+  final <- subset(res4, P<0.001)
+
+  probes <- gsub('^X', '', final$Variable)
+
+  library(biomaRt)
+  mart <- useMart("ENSEMBL_MART_ENSEMBL")
+  mart <- useDataset("hsapiens_gene_ensembl", mart)
+  annotLookup <- getBM(mart=mart, attributes=c("affy_hg_u133a", "ensembl_gene_id", "gene_biotype", "external_gene_name"), filter="affy_hg_u133a", values=probes, uniqueRows=TRUE)
+  annotLookup
+
+```
+
+```{r survival, fig.height = 6, fig.width = 9, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
+
+  library(survcomp)
+
+  par(mar=c(5,1,1,1), mfrow = c(1,2))
+
+  lab <- paste0('HR=',
+    round(final[final$Variable == 'X205242_at',HR],4),
+    '; log rank p=',
+    round(final[final$Variable == 'X205242_at',LogRank],4))
+  km.coxph.plot(formula.s=Surv(Time.RFS, Distant.RFS) ~ X205242_at + Grade, data.s = coxdata, mark.time=TRUE,
+    x.label="Time (days)", y.label="Recurrence free survival (RFS)", main.title="CXCL13",
+    leg.text=c("Mid", "Low", "High"), leg.pos="topright", leg.bty="n", leg.inset=0,
+    .col=c("forestgreen","blue2","red2"),
+    o.text=lab,
+    .lty=c(1,1,1), .lwd=c(3, 3, 3), show.n.risk=TRUE, n.risk.step=500, n.risk.cex=0.8, verbose=FALSE)
+
+  lab <- paste0('HR=',
+    round(final[final$Variable == 'X201822_at',HR],4),
+    '; log rank p=',
+    round(final[final$Variable == 'X201822_at',LogRank],4))
+  km.coxph.plot(formula.s=Surv(Time.RFS, Distant.RFS) ~ X201822_at + Grade, data.s = coxdata, mark.time=TRUE,
+    x.label="Time (days)", y.label="Recurrence free survival (RFS)", main.title="TIMM17A",
+    leg.text=c("Mid", "Low", "High"), leg.pos="topright", leg.bty="n", leg.inset=0,
+    .col=c("forestgreen","blue2","red2"),
+    o.text=lab,
+    .lty=c(1,1,1), .lwd=c(3, 3, 3), show.n.risk=TRUE, n.risk.step=500, n.risk.cex=0.8, verbose=FALSE)
+
+library(survminer)
+
+
+```
+
+## Perform a conditional logistic regression
+
+In this example, we will re-use the Cox data for the purpose of
+performing conditional logistic regression with tumour grade as
+our grouping / matching factor. For this example, we will use ER
+status as the dependent variable and also adjust for age.
+
+```{r clogitParallel}
+
+  library(survival)
+
+  coxdata$ER <- as.numeric(coxdata$ER)
+  coxdata <- coxdata[!is.na(coxdata$ER),]
+
+  res5 <- RegParallel(
+    data = coxdata,
+    formula = 'ER ~ [*] + Age + strata(Grade)',
+    FUN = function(formula, data) clogit(formula = formula, data = data, method = 'breslow'),
+    FUNtype = 'clogit',
+    variables = colnames(coxdata)[9:ncol(coxdata)],
+    blocksize = 900,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 95
+  )
+
+  res5
+
+  subset(res5, P<0.01)
+
+  getBM(mart=mart, attributes=c("affy_hg_u133a", "ensembl_gene_id", "gene_biotype", "external_gene_name"), filter="affy_hg_u133a", values=c('204667_at','205225_at'), uniqueRows=TRUE)
+
+```
+
+Oestrogen receptor (ESR1) and FOXO1 come out top - makes sense!
+
+Coincidentally, which genes are associated with Genomic Grade Index (GGI):
+
+```{r}
+
+  coxdata$GGI <- as.numeric(coxdata$GGI)
+
+  RegParallel(
+    data = coxdata,
+    formula = '[*] ~ GGI',
+    FUN = function(formula, data) glm(formula = formula, data = data),
+    FUNtype = 'glm',
+    variables = colnames(coxdata)[9:2000],#ncol(coxdata)],
+    blocksize = 1000,
+    cores = 2,
+    nestedParallel = TRUE,
+    conflevel = 99,
+    excludeIntercept = TRUE) %<>% subset(P < 0.0001)
+
+# Acknowledgments
+
+*RegParallel* would not exist were it not for initial
+contributions from:
+
+[Jessica Lasky-Su](https://connects.catalyst.harvard.edu/Profiles/display/Person/79780),
+[Myles Lewis](https://www.qmul.ac.uk/whri/people/academic-staff/items/lewismyles.html),
+[Michael Barnes](https://www.qmul.ac.uk/whri/people/academic-staff/items/barnesmichael.html)
+
+# Session info
+
+```{r}
+
+sessionInfo()
+
+```
+
+## References
+
+@RegParallel
+

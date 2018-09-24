@@ -1,26 +1,25 @@
 RegParallel <- function(
   data,
   formula,
-  FUN = function(formula, data)
-    glm(formula = formula,
-      data = data,
-      family = binomial(link = 'logit'),
-      method = 'glm.fit'),
-  FUNtype = 'glm',
+  FUN,
+  FUNtype,
   variables = NULL,
-  blocksize = 1000,
+  blocksize = 500,
   cores = 2,
   nestedParallel = FALSE,
   conflevel = 95,
-  removeNULL = TRUE)
+  excludeTerms = NULL,
+  excludeIntercept = TRUE)
 {
-  message('##############################\n#RegParallel\n##############################\n')
+  message('\n##############################\n#RegParallel\n##############################\n')
 
   system <- Sys.info()['sysname']
-  message('System is: ', system)
+  message('System is:')
+  message('-- ', system)
 
   blocksize <- round(blocksize, 0)
-  message('Blocksize: ', blocksize)
+  message('Blocksize:')
+  message('-- ', blocksize)
 
   # remove and report data with all 0
   zeros <- which(mapply(function(x) all(x == 0), data[variables]) == TRUE)
@@ -32,14 +31,17 @@ RegParallel <- function(
   }
 
   if (blocksize > length(variables)) {
-    stop(paste("blocksize is greater than number of variables to test.",
-      "Choose a smaller blocksize"),
+    stop(paste('blocksize is greater than number of variables to test.',
+      'Choose a smaller blocksize'),
       call. = FALSE)
   }
-  message('Cores / Threads: ', cores)
+
+  message('Cores / Threads:')
+  message('-- ', cores)
 
   if (nestedParallel == TRUE) {
-    message('Nesting enabled. Total potential cores + forked threads is ', cores * cores)
+    message('Nesting enabled. Total potential cores + forked threads is:')
+    message('-- ', cores * cores)
   }
 
   library(BiocParallel, quietly = TRUE)
@@ -69,47 +71,180 @@ RegParallel <- function(
     blocks <- 1
   }
 
+  #########
+  # parsing the formula
+    # substitute the [*] for a dummy variable and try to coerce to a formula
+    f <- gsub('\\[\\*\\]', 'dummyvar', formula)
+    if (class(try(as.formula(f), silent = TRUE)) == 'try-error') {
+      stop('The formula is invalid.')
+    }
+
+    # strip out information from the model to parse the variable names
+    terms <- all.vars(as.formula(f))
+
+    # if, on the off chance, the user is testing for a variable called 'dummyvar', we have to account for this possibility
+    library(stringr, quietly = TRUE)
+    if (str_count(f, 'dummyvar') > 1) {
+      terms <- terms
+    } else {
+      terms <- terms[-grep('dummyvar', terms)]
+    }
+
+    message('Terms included in model:')
+    for (i in 1:length(terms)) {
+      message('-- ', terms[i])
+    }
+
+    # check that terms are in the data
+    for (i in 1:length(terms)) {
+      if (!any(grepl(paste0('^', terms[i], '$'), colnames(data))) == TRUE) {
+        stop(paste('Error! - ', terms[i], ' not found. ',
+          'Check your model formula and data.', sep=''))
+      }
+    }
+  #########
+
+  # 'left align' the terms
+  data <- cbind(data[,which(colnames(data) %in% c(terms))], data[,which(colnames(data) %in% c(variables))])
+  startIndex <- length(terms)
+
+  # when there is only 1 term, the colname of the data frame defaults to 'data[, which(colnames(data) %in% c(terms))]'
+  if (length(terms) == 1) {
+    colnames(data)[1] <- terms[1]
+  }
+
+  # store each possible formula in the list
+  formula.list <- list()
+  for (i in 1:length(variables)) {
+    formula.list[[i]] <- as.formula(gsub('\\[\\*\\]', variables[i], formula))
+  }
+  five <- unlist(head(formula.list), 5)
+  message("First 5 formulae:")
+  for (i in 1:5) {
+    message('-- ', five[i])
+  }
+
+  if ((excludeIntercept == FALSE) && (grepl('coxph|clogit', FUNtype) == TRUE)) {
+    message(paste0('Note: an intercept term will be generated for neither ',
+      'Cox Proportional Hazards nor conditional logistic regression ',
+      'models.'))
+  }
+
+  if (!any((FUNtype %in% c('glm', 'lm', 'coxph', 'clogit', 'bayesglm', 'glm.nb')) == TRUE)) {
+    stop(paste0('FUNtype not recognised. Choose one of glm, lm, coxph, ',
+      'clogit, bayesglm, or glm.nb'))
+  }
+
   if (FUNtype == 'glm') {
     res <- glmParallel(
       data = data,
-      formula = formula,
+      formula.list = formula.list,
       FUN = FUN,
       variables = variables,
+      terms = terms,
+      startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
       system = system,
+      cluster = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
-      removeNULL = removeNULL,
-      cluster = cl)
+      excludeTerms = excludeTerms,
+      excludeIntercept = excludeIntercept)
   } else if (FUNtype == 'lm') {
     res <- lmParallel(
       data = data,
-      formula = formula,
+      formula.list = formula.list,
       FUN = FUN,
       variables = variables,
+      terms = terms,
+      startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
       system = system,
+      cluster = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
-      removeNULL = removeNULL,
-      cluster = cl)
+      excludeTerms = excludeTerms,
+      excludeIntercept = excludeIntercept)
   } else if (FUNtype == 'coxph') {
+    library(survival, quiet = TRUE)
 
     res <- coxphParallel(
       data = data,
-      formula = formula,
+      formula.list = formula.list,
       FUN = FUN,
       variables = variables,
+      terms = terms,
+      startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
       system = system,
+      cluster = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
-      removeNULL = removeNULL,
-      cluster = cl)
+      excludeTerms = excludeTerms)
+  } else if (FUNtype == 'clogit') {
+    library(survival, quiet = TRUE)
+
+    res <- clogitParallel(
+      data = data,
+      formula.list = formula.list,
+      FUN = FUN,
+      variables = variables,
+      terms = terms,
+      startIndex = startIndex,
+      blocksize = blocksize,
+      blocks = blocks,
+      system = system,
+      cluster = cl,
+      nestedParallel = nestedParallel,
+      conflevel = conflevel,
+      excludeTerms = excludeTerms)
+  } else if (FUNtype == 'bayesglm') {
+    library(arm, quiet = TRUE)
+
+    res <- bayesglmParallel(
+      data = data,
+      formula.list = formula.list,
+      FUN = FUN,
+      variables = variables,
+      terms = terms,
+      startIndex = startIndex,
+      blocksize = blocksize,
+      blocks = blocks,
+      system = system,
+      cluster = cl,
+      nestedParallel = nestedParallel,
+      conflevel = conflevel,
+      excludeTerms = excludeTerms,
+      excludeIntercept = excludeIntercept)
+  } else if (FUNtype == 'glm.nb') {
+    res <- glm.nbParallel(
+      data = data,
+      formula.list = formula.list,
+      FUN = FUN,
+      variables = variables,
+      terms = terms,
+      startIndex = startIndex,
+      blocksize = blocksize,
+      blocks = blocks,
+      system = system,
+      cluster = cl,
+      nestedParallel = nestedParallel,
+      conflevel = conflevel,
+      excludeTerms = excludeTerms,
+      excludeIntercept = excludeIntercept)
   }
+
+  # a sanity / integrity check
+  # this code should never be executed
+  if (!all((unique(res$Variable) == variables) == TRUE)) {
+    stop(paste0('An unknown error has occurred. ',
+      'Please verify that adequate resources are available and retry'))
+  }
+
+  message('Done!')
 
   return(res)
 }

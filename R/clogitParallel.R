@@ -1,4 +1,4 @@
-coxphParallel <- function(
+clogitParallel <- function(
   data,
   formula.list,
   FUN,

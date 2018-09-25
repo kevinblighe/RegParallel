@@ -25,12 +25,12 @@ glm.nbParallel <- function(
 
       if (nestedParallel == TRUE) {
         if (system == "Windows") {
-            models <- parLapply(cl, formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+            models <- parLapply(cl, formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df)))
         } else {
-            models <- mclapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+            models <- mclapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df)))
         }
       } else if (nestedParallel == FALSE) {
-        models <- lapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        models <- lapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df)))
       } else {
         stop("Invalid value for argument nestedParallel. Must be TRUE/FALSE")
       }
@@ -47,11 +47,27 @@ glm.nbParallel <- function(
           'Please recheck your data and model formula', sep=''))
       }
 
-      # convert to data frames
+      # extract coefficients and convert to data-frame
       if (system == "Windows") {
-        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- parLapply(cl, names(models), function(x) data.frame(models[[x]]['coefficients']))
       } else {
-        wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- mclapply(names(models), function(x) data.frame(models[[x]]['coefficients']))
+      }
+
+      names(wObjects) <- variables[1:(blocksize*l)]
+
+      # further processing
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, names(wObjects), function(x) data.frame(rep(x, length(rownames(wObjects[[x]]))), rownames(wObjects[[x]]), wObjects[[x]], row.names=rownames(wObjects[[x]])))
+      } else {
+        wObjects <- mclapply(names(wObjects), function(x) data.frame(rep(x, length(rownames(wObjects[[x]]))), rownames(wObjects[[x]]), wObjects[[x]], row.names=rownames(wObjects[[x]])))
+      }
+
+      # extract theta values specific to coxph
+      if (system == "Windows") {
+        t <- parLapply(cl, names(models), function(x) data.frame(models[[x]]$theta, models[[x]]$SE.theta, models[[x]]$twologlik, models[[x]]$dispersion, row.names = 'extra'))
+      } else {
+        t <- mclapply(names(models), function(x) data.frame(models[[x]]$theta, models[[x]]$SE.theta, models[[x]]$twologlik, models[[x]]$dispersion, row.names = 'extra'))
       }
 
       # remove intercept and / or specified terms from the output
@@ -75,25 +91,25 @@ glm.nbParallel <- function(
         }
       }
 
+      # check the final number of terms and multiple the glm.nb-specific p-value data-frame rows by these
+      # as there is only one of these p-values per model, we have to duplicate them to fit alongside the respective model terms in the final data-table
+      nterms <- nrow(wObjects[[1]])
+      if (system == "Windows") {
+        t <- parLapply(cl, t, function(x) x[rep('extra', nterms),])
+      } else {
+        t <- mclapply(t, function(x) x[rep('extra', nterms),])
+      }
+
       #Convert the list into a data table
-      wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
+      wObjects <- data.table(rbindlist(wObjects), rbindlist(t), stringsAsFactors=FALSE)
 
       # set colnames
-      # detect if the y variable in a glm is a continous variable (model will contain t stat; otherwise, Z)
-      if (any(grepl('^t\\.value$', colnames(wObjects))) == TRUE) {
-        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "t", "P")
-      } else {
-        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P")
-      }
+      colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P", 'Theta', 'SEtheta', '2xLogLik', 'Dispersion')
 
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
-      if (any(grepl('^t$', colnames(wObjects))) == TRUE) {
-        wObjects$t <- as.numeric(as.character(wObjects$t))
-      } else {
-        wObjects$Z <- as.numeric(as.character(wObjects$Z))
-      }
+      wObjects$Z <- as.numeric(as.character(wObjects$Z))
       wObjects$P <- as.numeric(as.character(wObjects$P))
 
       # calculate OR and confidence intervals
@@ -102,13 +118,8 @@ glm.nbParallel <- function(
       wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
 
       # change Inf and NaN to NA
-      if (any(grepl('^t$', colnames(wObjects)) == TRUE)) {
-        wObjects$t[is.infinite(wObjects$t)] <- NA
-        wObjects$t[wObjects$t == "NaN"] <- NA
-      } else {
-        wObjects$Z[is.infinite(wObjects$Z)] <- NA
-        wObjects$Z[wObjects$Z == "NaN"] <- NA
-      }
+      wObjects$Z[is.infinite(wObjects$Z)] <- NA
+      wObjects$Z[wObjects$Z == "NaN"] <- NA
       wObjects$P[is.infinite(wObjects$P)] <- NA
       wObjects$P[wObjects$P == "NaN"] <- NA
       wObjects$OR[is.infinite(wObjects$OR)] <- NA
@@ -135,12 +146,12 @@ glm.nbParallel <- function(
 
       if (nestedParallel == TRUE) {
         if (system == "Windows") {
-          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df)))
         } else {
-          models <- mclapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+          models <- mclapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df)))
         }
       } else if (nestedParallel == FALSE) {
-        models <- lapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        models <- lapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df)))
       } else {
         stop("Invalid value for argument nestedParallel. Must be TRUE/FALSE")
       }
@@ -157,11 +168,27 @@ glm.nbParallel <- function(
           'Please recheck your data and model formula', sep=''))
       }
 
-      # convert to data frames
+      # extract coefficients and convert to data-frame
       if (system == "Windows") {
-        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- parLapply(cl, names(models), function(x) data.frame(models[[x]]['coefficients']))
       } else {
-        wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- mclapply(names(models), function(x) data.frame(models[[x]]['coefficients']))
+      }
+
+      names(wObjects) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
+
+      # further processing
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, names(wObjects), function(x) data.frame(rep(x, length(rownames(wObjects[[x]]))), rownames(wObjects[[x]]), wObjects[[x]], row.names=rownames(wObjects[[x]])))
+      } else {
+        wObjects <- mclapply(names(wObjects), function(x) data.frame(rep(x, length(rownames(wObjects[[x]]))), rownames(wObjects[[x]]), wObjects[[x]], row.names=rownames(wObjects[[x]])))
+      }
+
+      # extract theta values specific to coxph
+      if (system == "Windows") {
+        t <- parLapply(cl, names(models), function(x) data.frame(models[[x]]$theta, models[[x]]$SE.theta, models[[x]]$twologlik, models[[x]]$dispersion, row.names = 'extra'))
+      } else {
+        t <- mclapply(names(models), function(x) data.frame(models[[x]]$theta, models[[x]]$SE.theta, models[[x]]$twologlik, models[[x]]$dispersion, row.names = 'extra'))
       }
 
       # remove intercept and / or specified terms from the output
@@ -185,25 +212,25 @@ glm.nbParallel <- function(
         }
       }
 
+      # check the final number of terms and multiple the glm.nb-specific p-value data-frame rows by these
+      # as there is only one of these p-values per model, we have to duplicate them to fit alongside the respective model terms in the final data-table
+      nterms <- nrow(wObjects[[1]])
+      if (system == "Windows") {
+        t <- parLapply(cl, t, function(x) x[rep('extra', nterms),])
+      } else {
+        t <- mclapply(t, function(x) x[rep('extra', nterms),])
+      }
+
       #Convert the list into a data table
-      wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
+      wObjects <- data.table(rbindlist(wObjects), rbindlist(t), stringsAsFactors=FALSE)
 
       # set colnames
-      # detect if the y variable in a glm is a continous variable (model will contain t stat; otherwise, Z)
-      if (any(grepl('^t\\.value$', colnames(wObjects))) == TRUE) {
-        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "t", "P")
-      } else {
-        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P")
-      }
+      colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P", 'Theta', 'SEtheta', '2xLogLik', 'Dispersion')
 
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
-      if (any(grepl('^t$', colnames(wObjects))) == TRUE) {
-        wObjects$t <- as.numeric(as.character(wObjects$t))
-      } else {
-        wObjects$Z <- as.numeric(as.character(wObjects$Z))
-      }
+      wObjects$Z <- as.numeric(as.character(wObjects$Z))
       wObjects$P <- as.numeric(as.character(wObjects$P))
 
       # calculate OR and confidence intervals
@@ -212,13 +239,8 @@ glm.nbParallel <- function(
       wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
 
       # change Inf and NaN to NA
-      if (any(grepl('^t$', colnames(wObjects)) == TRUE)) {
-        wObjects$t[is.infinite(wObjects$t)] <- NA
-        wObjects$t[wObjects$t == "NaN"] <- NA
-      } else {
-        wObjects$Z[is.infinite(wObjects$Z)] <- NA
-        wObjects$Z[wObjects$Z == "NaN"] <- NA
-      }
+      wObjects$Z[is.infinite(wObjects$Z)] <- NA
+      wObjects$Z[wObjects$Z == "NaN"] <- NA
       wObjects$P[is.infinite(wObjects$P)] <- NA
       wObjects$P[wObjects$P == "NaN"] <- NA
       wObjects$OR[is.infinite(wObjects$OR)] <- NA
@@ -244,12 +266,12 @@ glm.nbParallel <- function(
 
       if (nestedParallel == TRUE) {
         if (system == "Windows") {
-          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df)))
         } else {
-          models <- mclapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+          models <- mclapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df)))
         } 
       } else if (nestedParallel == FALSE) {
-        models <- lapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+        models <- lapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df)))
       } else {
         stop("Invalid value for argument nestedParallel. Must be TRUE/FALSE")
       }
@@ -266,11 +288,27 @@ glm.nbParallel <- function(
           'Please recheck your data and model formula', sep=''))
       }
 
-      # convert to data frames
+      # extract coefficients and convert to data-frame
       if (system == "Windows") {
-        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- parLapply(cl, names(models), function(x) data.frame(models[[x]]['coefficients']))
       } else {
-        wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- mclapply(names(models), function(x) data.frame(models[[x]]['coefficients']))
+      }
+
+      names(wObjects) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
+
+      # further processing
+      if (system == "Windows") {
+        wObjects <- parLapply(cl, names(wObjects), function(x) data.frame(rep(x, length(rownames(wObjects[[x]]))), rownames(wObjects[[x]]), wObjects[[x]], row.names=rownames(wObjects[[x]])))
+      } else {
+        wObjects <- mclapply(names(wObjects), function(x) data.frame(rep(x, length(rownames(wObjects[[x]]))), rownames(wObjects[[x]]), wObjects[[x]], row.names=rownames(wObjects[[x]])))
+      }
+
+      # extract theta values specific to coxph
+      if (system == "Windows") {
+        t <- parLapply(cl, names(models), function(x) data.frame(models[[x]]$theta, models[[x]]$SE.theta, models[[x]]$twologlik, models[[x]]$dispersion, row.names = 'extra'))
+      } else {
+        t <- mclapply(names(models), function(x) data.frame(models[[x]]$theta, models[[x]]$SE.theta, models[[x]]$twologlik, models[[x]]$dispersion, row.names = 'extra'))
       }
 
       # remove intercept and / or specified terms from the output
@@ -294,25 +332,25 @@ glm.nbParallel <- function(
         }
       }
 
+      # check the final number of terms and multiple the glm.nb-specific p-value data-frame rows by these
+      # as there is only one of these p-values per model, we have to duplicate them to fit alongside the respective model terms in the final data-table
+      nterms <- nrow(wObjects[[1]])
+      if (system == "Windows") {
+        t <- parLapply(cl, t, function(x) x[rep('extra', nterms),])
+      } else {
+        t <- mclapply(t, function(x) x[rep('extra', nterms),])
+      }
+
       #Convert the list into a data table
-      wObjects <- data.table(rbindlist(wObjects), stringsAsFactors=FALSE)
+      wObjects <- data.table(rbindlist(wObjects), rbindlist(t), stringsAsFactors=FALSE)
 
       # set colnames
-      # detect if the y variable in a glm is a continous variable (model will contain t stat; otherwise, Z)
-      if (any(grepl('^t\\.value$', colnames(wObjects))) == TRUE) {
-        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "t", "P")
-      } else {
-        colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P")
-      }
+      colnames(wObjects) <- c("Variable", "Term", "Beta", "StandardError", "Z", "P", 'Theta', 'SEtheta', '2xLogLik', 'Dispersion')
 
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(as.character(wObjects$StandardError))
-      if (any(grepl('^t$', colnames(wObjects))) == TRUE) {
-        wObjects$t <- as.numeric(as.character(wObjects$t))
-      } else {
-        wObjects$Z <- as.numeric(as.character(wObjects$Z))
-      }
+      wObjects$Z <- as.numeric(as.character(wObjects$Z))
       wObjects$P <- as.numeric(as.character(wObjects$P))
 
       # calculate OR and confidence intervals
@@ -321,13 +359,8 @@ glm.nbParallel <- function(
       wObjects$ORupper <- wObjects$OR * exp(qnorm(1 - ((1 - (conflevel / 100)) / 2)) * wObjects$StandardError)
 
       # change Inf and NaN to NA
-      if (any(grepl('^t$', colnames(wObjects)) == TRUE)) {
-        wObjects$t[is.infinite(wObjects$t)] <- NA
-        wObjects$t[wObjects$t == "NaN"] <- NA
-      } else {
-        wObjects$Z[is.infinite(wObjects$Z)] <- NA
-        wObjects$Z[wObjects$Z == "NaN"] <- NA
-      }
+      wObjects$Z[is.infinite(wObjects$Z)] <- NA
+      wObjects$Z[wObjects$Z == "NaN"] <- NA
       wObjects$P[is.infinite(wObjects$P)] <- NA
       wObjects$P[wObjects$P == "NaN"] <- NA
       wObjects$OR[is.infinite(wObjects$OR)] <- NA

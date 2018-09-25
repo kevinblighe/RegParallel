@@ -3,6 +3,8 @@ export('glmParallel')
 export('lmParallel')
 export('coxphParallel')
 export('clogitParallel')
+export('glm.nbParallel')
+export('bayesglmParallel')
 
 import(BiocParallel)
 import(foreach)

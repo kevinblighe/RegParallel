@@ -69,7 +69,7 @@ Note: to install development version:
 
 # Quick start.
 
-For this example, we will follow the tutorial (from Section 3.1) of [RNA-seq workflow: gene-level
+For this quick start, we will follow the tutorial (from Section 3.1) of [RNA-seq workflow: gene-level
 exploratory analysis and differential expression](http://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html). Specifically, we will load the 'airway' data, where different airway smooth muscle cells were treated with dexamethasone.
 
 ```{r}
@@ -84,93 +84,108 @@ exploratory analysis and differential expression](http://master.bioconductor.org
 
 ```
 
-Produce regularised log counts on which we will run our model:
+Normalise the raw counts in DESeq2 and produce regularised log counts:
 
 ```{r}
 
     library(DESeq2)
 
-    dds <- DESeqDataSet(airway, design = ~ dex)
+    dds <- DESeqDataSet(airway, design = ~ dex + cell)
     dds <- DESeq(dds, betaPrior=FALSE)
-    rldcounts <- assay(rlog(dds, blind=TRUE))
-    glmdata <- data.frame(colData(airway), t(rldcounts))
+    rlogcounts <- assay(rlog(dds, blind=FALSE))
+    rlogdata <- data.frame(colData(airway), t(rlogcounts))
 
 ```
 
 ## Perform the most basic regression analysis.
 
-For the most ..........
+Here, we fit a binomial logistic regression model to the data via glmParallel:
 
-```{r glmParallel}
+```{r glmParallel1}
 
     res1 <- RegParallel(
-      data = glmdata,
+      data = rlogdata[,1:3000],
       formula = 'dex ~ [*]',
-      FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = 'logit'), method = 'glm.fit'),
+      FUN = function(formula, data)
+        glm(formula = formula,
+          data = data,
+          family = binomial(link = 'logit')),
       FUNtype = 'glm',
-      variables = colnames(glmdata)[10:ncol(glmdata)],
-      blocksize = 1000,
-      cores = 2,
-      nestedParallel = TRUE,
-      conflevel = 99,
-      excludeTerms = c('dex'),
-      excludeIntercept = FALSE
-    )
+      variables = colnames(rlogdata)[10:3000])
 
-    res1
+    res1[order(res1$P, decreasing=FALSE),]
 
 ```
 
-# Advanced features.
+## Perform a basic linear regression.
 
+Here, we will perform the linear regression using both glmParallel and
+lmParallel. We will appreciate that a linear regression is the same
+using either function with the default settings.
 
+Regularised log counts from our DESeq2 data will be used.
 
-## Perform a linear regression.
+```{r lmParallel1}
 
-In this exam...
-
-```{r lmParallel}
-
-  lmdata <- glmdata[,1:2000]
+  rlogdata <- rlogdata[,1:2000]
 
   res2 <- RegParallel(
     data = lmdata,
-    formula = '[*] ~ dex + cell',
-    FUN = function(formula, data) glm(formula = formula, data = data, method = 'glm.fit'),
+    formula = '[*] ~ cell',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        method = 'glm.fit'),
     FUNtype = 'glm',
-    variables = colnames(lmdata)[10:ncol(lmdata)],
-    blocksize = 400,
-    cores = 2,
-    nestedParallel = TRUE,
-    conflevel = 99,
-    excludeTerms = c('dex', 'cell'),
-    excludeIntercept = TRUE
-  )
+    variables = colnames(rlogdata)[10:ncol(rlogdata)])
 
   res3 <- RegParallel(
     data = lmdata,
-    formula = '[*] ~ dex + cell',
-    FUN = function(formula, data) lm(formula = formula, data = data),
+    formula = '[*] ~ cell',
+    FUN = function(formula, data)
+      lm(formula = formula,
+        data = data),
     FUNtype = 'lm',
-    variables = colnames(lmdata)[10:ncol(lmdata)],
-    blocksize = 400,
-    cores = 2,
-    nestedParallel = TRUE,
-    conflevel = 99,
-    excludeTerms = c('dex', 'cell'),
-    excludeIntercept = TRUE
-  )
+    variables = colnames(rlogdata)[10:ncol(rlogdata)])
 
-  res2
-  res3
+  subset(res2, P<0.05)
+  subset(res3, P<0.05)
 
 ```
 
+
+## Perform the most basic negative binomial logistic regression analysis with glm.nbParallel:
+
+Here, we will utilise normalised, unlogged counts from DESeq2.
+
+```{r glm.nbParallel1}
+
+    nbcounts <- round(counts(dds, normalized = TRUE), 0)
+    nbdata <- data.frame(colData(airway), t(nbcounts))
+
+    res4 <- RegParallel(
+      data = nbdata[,1:3000],
+      formula = '[*] ~ dex',
+      FUN = function(formula, data)
+        glm.nb(formula = formula,
+          data = data),
+      FUNtype = 'glm.nb',
+      variables = colnames(nbdata)[10:3000])
+
+    res4[order(res4$Theta, decreasing = TRUE),]
+
+```
+
+
 ## Survival analysis via Cox Proportional Hazards regression.
 
-For this example, we will load breast cancer gene expression data with recurrence free survival (RFS) from [Gene Expression Profiling in Breast Cancer: Understanding the Molecular Basis of Histologic Grade To Improve Prognosis](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE2990). Specifically, we will encode each gene's expresion into Low|Mid|High based on Z-scores and compare these against RFS while adjusting for tumour grade in a Cox Proportional Hazards model.
+For this example, we will load breast cancer gene expression data with
+recurrence free survival (RFS) from [Gene Expression Profiling in Breast Cancer: Understanding the Molecular Basis of Histologic Grade To Improve Prognosis](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE2990).
+Specifically, we will encode each gene's expression into Low|Mid|High based
+on Z-scores and compare these against RFS while adjusting for tumour
+grade in a Cox Proportional Hazards model.
 
-```{r ex2}
+```{r coxphParallel1}
   library(Biobase)
   library(GEOquery)
 
@@ -212,11 +227,11 @@ For this example, we will load breast cancer gene expression data with recurrenc
 
 ```
 
-```{r coxphParallel}
+```{r coxphParallel2}
 
   library(survival)
 
-  res4 <- RegParallel(
+  res5 <- RegParallel(
     data = coxdata,
     formula = 'Surv(Time.RFS, Distant.RFS) ~ [*] + Grade',
     FUN = function(formula, data) coxph(formula = formula, data = data, ties = 'breslow', singular.ok = TRUE),
@@ -229,17 +244,17 @@ For this example, we will load breast cancer gene expression data with recurrenc
     excludeTerms = c('Grade')
   )
 
-  res4 <- res4[!is.na(res4$P),]
+  res5 <- res5[!is.na(res4$P),]
 
-  res4
+  res5
 
 ```
 
-```{r annotation}
+```{r coxphParallel3}
 
-  res4 <- res4[order(res4$P, decreasing = FALSE),]
+  res5 <- res5[order(res5$P, decreasing = FALSE),]
 
-  final <- subset(res4, P<0.001)
+  final <- subset(res5, P<0.001)
 
   probes <- gsub('^X', '', final$Variable)
 
@@ -251,7 +266,7 @@ For this example, we will load breast cancer gene expression data with recurrenc
 
 ```
 
-```{r survival, fig.height = 6, fig.width = 9, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
+```{r coxphParallel4, fig.height = 6, fig.width = 9, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
 
   library(survcomp)
 
@@ -337,6 +352,15 @@ Coincidentally, which genes are associated with Genomic Grade Index (GGI):
     nestedParallel = TRUE,
     conflevel = 99,
     excludeIntercept = TRUE) %<>% subset(P < 0.0001)
+
+```
+
+# Advanced features.
+
+Advanced features include the ability to modify block size, choose different
+numbers of cores, enable 'nested' parallel processing, modify limits for
+confidence intervals, and exclude certain model terms from output.
+
 
 # Acknowledgments
 

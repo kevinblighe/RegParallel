@@ -3,7 +3,7 @@ RegParallel <- function(
   formula,
   FUN,
   FUNtype,
-  variables = NULL,
+  variables,
   blocksize = 500,
   cores = 2,
   nestedParallel = FALSE,

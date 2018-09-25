@@ -44,7 +44,11 @@ bayesglmParallel <- function(
       if (length(nullindices) > 1) {
         print(models[[nullindices[1]]][1])
         stop(paste('\nOne or more models have failed. ',
-          'Please recheck your data and model formula', sep=''))
+          'Please recheck your data and model formula. ',
+          'In particular, check that your variable names ',
+          'are valid, i.e., no spaces, do not begin with ',
+          'a number, no hyphens or other punctuation, et ',
+          'cetera.', sep=''))
       }
 
       # convert to data frames
@@ -154,7 +158,11 @@ bayesglmParallel <- function(
       if (length(nullindices) > 1) {
         print(models[[nullindices[1]]][1])
         stop(paste('\nOne or more models have failed. ',
-          'Please recheck your data and model formula', sep=''))
+          'Please recheck your data and model formula. ',
+          'In particular, check that your variable names ',
+          'are valid, i.e., no spaces, do not begin with ',
+          'a number, no hyphens or other punctuation, et ',
+          'cetera.', sep=''))
       }
 
       # convert to data frames
@@ -263,7 +271,11 @@ bayesglmParallel <- function(
       if (length(nullindices) > 1) {
         print(models[[nullindices[1]]][1])
         stop(paste('\nOne or more models have failed. ',
-          'Please recheck your data and model formula', sep=''))
+          'Please recheck your data and model formula. ',
+          'In particular, check that your variable names ',
+          'are valid, i.e., no spaces, do not begin with ',
+          'a number, no hyphens or other punctuation, et ',
+          'cetera.', sep=''))
       }
 
       # convert to data frames

@@ -31,7 +31,7 @@ Suggests:
   Biobase,
   GEOquery,
   biomaRt,
-  survcomp
+  survminer
 URL: https://github.com/kevinblighe/RegParallel
 biocViews: 
 VignetteBuilder: knitr

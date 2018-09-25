@@ -185,47 +185,65 @@ Specifically, we will encode each gene's expression into Low|Mid|High based
 on Z-scores and compare these against RFS while adjusting for tumour
 grade in a Cox Proportional Hazards model.
 
+First, let's read in and prepare the data
+
 ```{r coxphParallel1}
   library(Biobase)
+
   library(GEOquery)
 
   # load series and platform data from GEO
-  gset <- getGEO("GSE2990", GSEMatrix =TRUE, getGPL=FALSE)
+  gset <- getGEO('GSE2990', GSEMatrix =TRUE, getGPL=FALSE)
 
   x <- exprs(gset[[1]])
 
+  # remove Affymetrix control probes
   x <- x[-grep('^AFFX', rownames(x)),]
-  x <- scale(x)
 
-  highExpr <- 1.0
-  lowExpr <- -1.0
+  # transform the expression data to Z scores
+  x <- t(scale(t(x)))
 
-  x <- data.frame(t(do.call(rbind, lapply(data.frame(x), function(x) ifelse(x >= highExpr, 'High', ifelse(x <= lowExpr, 'Low', 'Mid'))))), row.names = rownames(x))
+  # extract information of interest from the phenotype data (pdata)
+  idx <- which(colnames(pData(gset[[1]])) %in%
+    c('age:ch1', 'distant rfs:ch1', 'er:ch1',
+      'ggi:ch1', 'grade:ch1', 'node:ch1',
+      'size:ch1', 'time rfs:ch1'))
 
-  idx <- which(colnames(pData(gset[[1]])) %in% c('age:ch1', 'distant rfs:ch1', 'er:ch1', 'ggi:ch1', 'grade:ch1', 'node:ch1', 'size:ch1', 'time rfs:ch1'))
-  metadata <- data.frame(pData(gset[[1]])[,idx], row.names = rownames(pData(gset[[1]])))
+  metadata <- data.frame(pData(gset[[1]])[,idx],
+    row.names = rownames(pData(gset[[1]])))
+
+  # remove samples from the pdata that have any NA value
   discard <- apply(metadata, 1, function(x) any(is.na(x)))
-
   metadata <- metadata[!discard,]
+
+  # filter the Z-scores expression data to match the samples in our pdata
   x <- x[,which(colnames(x) %in% rownames(metadata))]
 
+  # check that sample names match exactly between pdata and Z-scores 
   all((colnames(x) == rownames(metadata)) == TRUE)
 
+  # create a merged pdata and Z-scores object
   coxdata <- data.frame(metadata, t(x))
 
-  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER', 'GGI', 'Grade', 'Node', 'Size', 'Time.RFS')
+  # tidy column names
+  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
+    'GGI', 'Grade', 'Node',
+    'Size', 'Time.RFS')
 
+  # prepare certain phenotypes
   coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
   coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
   coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
   coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
   coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
 
-  for (i in 9:ncol(coxdata)) {
-    coxdata[,i] <- factor(coxdata[,i], levels = c('Mid', 'Low', 'High'))
-  }
-
 ```
+
+With the data prepared, we can now apply a Cox Proportional Hazards model
+indpendently for each probe in the dataset against RFS.
+
+In this we also increase the default blocksize to 2000 in order to speed
+up the analysis.
 
 ```{r coxphParallel2}
 
@@ -233,68 +251,103 @@ grade in a Cox Proportional Hazards model.
 
   res5 <- RegParallel(
     data = coxdata,
-    formula = 'Surv(Time.RFS, Distant.RFS) ~ [*] + Grade',
-    FUN = function(formula, data) coxph(formula = formula, data = data, ties = 'breslow', singular.ok = TRUE),
+    formula = 'Surv(Time.RFS, Distant.RFS) ~ [*]',
+    FUN = function(formula, data)
+      coxph(formula = formula,
+        data = data,
+        ties = 'breslow',
+        singular.ok = TRUE),
     FUNtype = 'coxph',
     variables = colnames(coxdata)[9:ncol(coxdata)],
-    blocksize = 1000,
-    cores = 2,
-    nestedParallel = TRUE,
-    conflevel = 95,
-    excludeTerms = c('Grade')
-  )
+    blocksize = 2000)
 
-  res5 <- res5[!is.na(res4$P),]
+  res5 <- res5[!is.na(res5$P),]
 
   res5
 
 ```
 
+We now take the top probes from the model by Log Rank p-value and use
+<i>biomaRt</i> to look up the corresponding gene symbols.
+
 ```{r coxphParallel3}
 
-  res5 <- res5[order(res5$P, decreasing = FALSE),]
+  res5 <- res5[order(res5$LogRank, decreasing = FALSE),]
 
-  final <- subset(res5, P<0.001)
+  final <- subset(res5, LogRank < 0.01)
 
   probes <- gsub('^X', '', final$Variable)
 
   library(biomaRt)
-  mart <- useMart("ENSEMBL_MART_ENSEMBL")
+  mart <- useMart('ENSEMBL_MART_ENSEMBL')
   mart <- useDataset("hsapiens_gene_ensembl", mart)
-  annotLookup <- getBM(mart=mart, attributes=c("affy_hg_u133a", "ensembl_gene_id", "gene_biotype", "external_gene_name"), filter="affy_hg_u133a", values=probes, uniqueRows=TRUE)
-  annotLookup
+  annotLookup <- getBM(mart = mart,
+    attributes = c('affy_hg_u133a',
+      'ensembl_gene_id',
+      'gene_biotype',
+      'external_gene_name'),
+    filter = 'affy_hg_u133a',
+    values = probes,
+    uniqueRows = TRUE)
 
 ```
 
-```{r coxphParallel4, fig.height = 6, fig.width = 9, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
+Two of the top hits include <i>CXCL12</i> and <i>MMP10</i>. High expression of <i>CXCL12</i> was previously associated with good progression free and overall survival in breast cancer in (doi: 10.1016/j.cca.2018.05.041.)[https://www.ncbi.nlm.nih.gov/pubmed/29800557], whilst high expression of <i>MMP10</i> was associated with poor prognosis in colon cancer in (doi:  10.1186/s12885-016-2515-7)[https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4950722/].
 
-  library(survcomp)
+We can further explore the role of these genes to RFS by dividing their
+gene expression Z-scores into tertiles for low, mid, and high expression:
 
-  par(mar=c(5,1,1,1), mfrow = c(1,2))
+```{r coxphParallel4}
 
-  lab <- paste0('HR=',
-    round(final[final$Variable == 'X205242_at',HR],4),
-    '; log rank p=',
-    round(final[final$Variable == 'X205242_at',LogRank],4))
-  km.coxph.plot(formula.s=Surv(Time.RFS, Distant.RFS) ~ X205242_at + Grade, data.s = coxdata, mark.time=TRUE,
-    x.label="Time (days)", y.label="Recurrence free survival (RFS)", main.title="CXCL13",
-    leg.text=c("Mid", "Low", "High"), leg.pos="topright", leg.bty="n", leg.inset=0,
-    .col=c("forestgreen","blue2","red2"),
-    o.text=lab,
-    .lty=c(1,1,1), .lwd=c(3, 3, 3), show.n.risk=TRUE, n.risk.step=500, n.risk.cex=0.8, verbose=FALSE)
+  # extract RFS and probe data for downstream analysis
+  survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
+    'X203666_at', 'X205680_at')]
+  colnames(survplotdata) <- c('Time.RFS', 'Distant.RFS',
+    'CXCL12', 'MMP10')
 
-  lab <- paste0('HR=',
-    round(final[final$Variable == 'X201822_at',HR],4),
-    '; log rank p=',
-    round(final[final$Variable == 'X201822_at',LogRank],4))
-  km.coxph.plot(formula.s=Surv(Time.RFS, Distant.RFS) ~ X201822_at + Grade, data.s = coxdata, mark.time=TRUE,
-    x.label="Time (days)", y.label="Recurrence free survival (RFS)", main.title="TIMM17A",
-    leg.text=c("Mid", "Low", "High"), leg.pos="topright", leg.bty="n", leg.inset=0,
-    .col=c("forestgreen","blue2","red2"),
-    o.text=lab,
-    .lty=c(1,1,1), .lwd=c(3, 3, 3), show.n.risk=TRUE, n.risk.step=500, n.risk.cex=0.8, verbose=FALSE)
+  # set Z-scale cut-offs for high and low expression
+  highExpr <- 1.0
+  lowExpr <- 1.0
 
-library(survminer)
+  # encode the expression for CXCL12 and MMP10 as low, mid, and high
+  survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, 'High',
+    ifelse(x <= lowExpr, 'Low', 'Mid'))
+  survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, 'High',
+    ifelse(x <= lowExpr, 'Low', 'Mid'))
+
+  # relevel the factors to have mid as the reference level
+  survplotdata$CXCL12 <- factor(survplotdata$CXCL12,
+    levels = c('Mid', 'Low', 'High'))
+  survplotdata$MMP10 <- factor(survplotdata$MMP10,
+    levels = c('Mid', 'Low', 'High'))
+
+```
+
+Plot the survival curves and place Log RAnk p-value in the plots:
+
+```{r coxphParallel5, fig.height = 6, fig.width = 6, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
+
+  library(survminer)
+
+  ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12, data = survplotdata),
+    data = survplotdata,
+    risk.table = TRUE,
+    pval = TRUE,
+    break.time.by = 500,
+    ggtheme = theme_minimal(),
+    risk.table.y.text.col = TRUE,
+    risk.table.y.text = FALSE
+  )
+
+  ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ MMP10, data = survplotdata),
+    data = survplotdata,
+    risk.table = TRUE,
+    pval = TRUE,
+    break.time.by = 500,
+    ggtheme = theme_minimal(),
+    risk.table.y.text.col = TRUE,
+    risk.table.y.text = FALSE
+  )
 
 
 ```
@@ -308,58 +361,294 @@ status as the dependent variable and also adjust for age.
 
 ```{r clogitParallel}
 
-  library(survival)
-
+  x <- exprs(gset[[1]])
+  x <- x[-grep('^AFFX', rownames(x)),]
+  x <- scale(x)
+  x <- x[,which(colnames(x) %in% rownames(metadata))]
+  coxdata <- data.frame(metadata, t(x))
+  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
+    'GGI', 'Grade', 'Node',
+    'Size', 'Time.RFS')
+  coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
+  coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
   coxdata$ER <- as.numeric(coxdata$ER)
   coxdata <- coxdata[!is.na(coxdata$ER),]
 
-  res5 <- RegParallel(
+  res6 <- RegParallel(
     data = coxdata,
     formula = 'ER ~ [*] + Age + strata(Grade)',
-    FUN = function(formula, data) clogit(formula = formula, data = data, method = 'breslow'),
+    FUN = function(formula, data)
+      clogit(formula = formula,
+        data = data,
+        method = 'breslow'),
     FUNtype = 'clogit',
     variables = colnames(coxdata)[9:ncol(coxdata)],
-    blocksize = 900,
-    cores = 2,
-    nestedParallel = TRUE,
-    conflevel = 95
-  )
+    blocksize = 2000)
 
-  res5
+  subset(res6, P < 0.01)
 
-  subset(res5, P<0.01)
-
-  getBM(mart=mart, attributes=c("affy_hg_u133a", "ensembl_gene_id", "gene_biotype", "external_gene_name"), filter="affy_hg_u133a", values=c('204667_at','205225_at'), uniqueRows=TRUE)
-
-```
-
-Oestrogen receptor (ESR1) and FOXO1 come out top - makes sense!
-
-Coincidentally, which genes are associated with Genomic Grade Index (GGI):
-
-```{r}
-
-  coxdata$GGI <- as.numeric(coxdata$GGI)
-
-  RegParallel(
-    data = coxdata,
-    formula = '[*] ~ GGI',
-    FUN = function(formula, data) glm(formula = formula, data = data),
-    FUNtype = 'glm',
-    variables = colnames(coxdata)[9:2000],#ncol(coxdata)],
-    blocksize = 1000,
-    cores = 2,
-    nestedParallel = TRUE,
-    conflevel = 99,
-    excludeIntercept = TRUE) %<>% subset(P < 0.0001)
+  getBM(mart = mart,
+    attributes = c('affy_hg_u133a',
+      'ensembl_gene_id',
+      'gene_biotype',
+      'external_gene_name'),
+    filter = 'affy_hg_u133a',
+    values = c('204667_at',
+      '205225_at',
+      '207813_s_at',
+      '212108_at',
+      '219497_s_at'),
+    uniqueRows=TRUE)
 
 ```
+
+<i>Oestrogen receptor (ESR1)</i> comes out top - makes sense! Also, although
+204667_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>,
+which also makes sense in relation to oestrogen signalling.
+
 
 # Advanced features.
 
 Advanced features include the ability to modify block size, choose different
 numbers of cores, enable 'nested' parallel processing, modify limits for
 confidence intervals, and exclude certain model terms from output.
+
+
+## Speed up processing
+
+First create some test data for the purpose of benchmarking:
+
+```{r speedup1}
+
+  options(scipen=10)
+  options(digits=6)
+
+  col <- 60000
+  row <- 20
+  mat <- matrix(
+    rexp(col*row, rate = .1),
+    ncol = col)
+  colnames(mat) <- paste0('gene', 1:ncol(mat))
+  rownames(mat) <- paste0('sample', 1:nrow(mat))
+
+  modelling <- data.frame(
+    cell = rep(c('B', 'T'), nrow(mat) / 2),
+    group = c(rep(c('treatment'), nrow(mat) / 2), rep(c('control'), nrow(mat) / 2)),
+    dosage = t(data.frame(matrix(rexp(row, rate = 1), ncol = row))),
+    mat,
+    row.names = rownames(mat))
+
+```
+
+### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, TRUE
+
+```{r speedup2}
+
+  df <- modelling[,1:2000]
+  variables <- colnames(df)[4:ncol(df)]
+
+  ptm <- proc.time()
+  res <- RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 2,
+    nestedParallel = TRUE)
+  proc.time() - ptm
+
+```
+
+### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, FALSE
+
+```{r speedup3}
+
+  df <- modelling[,1:2000]
+  variables <- colnames(df)[4:ncol(df)]
+
+  ptm <- proc.time()
+  res <- RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 2,
+    nestedParallel = FALSE)
+  proc.time() - ptm
+
+```
+
+Focusing on the elapsed time (as system time only reports time from the last
+core that finished), we can see that nested processing has no effect or is
+actually slower over a small number of variables. This is likely due to the
+system being slowed by simply managing the larger number of threads. Nested
+processing's benefits can only be gained when processing a large number of
+variables:
+
+### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, TRUE
+
+```{r speedup4}
+
+  df <- modelling[,1:40000]
+  variables <- colnames(df)[4:ncol(df)]
+
+  system.time(RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 2000,
+    cores = 2,
+    nestedParallel = TRUE))
+
+```
+
+### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, FALSE
+
+```{r speedup5}
+
+  df <- modelling[,1:40000]
+  variables <- colnames(df)[4:ncol(df)]
+
+  system.time(RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 2000,
+    cores = 2,
+    nestedParallel = FALSE))
+
+```
+
+Performance is system-dependent and even increasing cores may not result in
+huge gains in time. Performance is a trade-off between cores, forked threads,
+blocksize, and the number of terms in each model.
+
+### ~40000 tests; blocksize, 5000; cores, 3; nestedParallel, TRUE
+
+```{r speedup6}
+
+  df <- modelling[,1:40000]
+  variables <- colnames(df)[4:ncol(df)]
+
+  system.time(RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 3,
+    nestedParallel = TRUE))
+
+```
+
+## Modify confidence intervals
+
+```{r confint}
+
+  df <- modelling[,1:1000]
+  variables <- colnames(df)[4:ncol(df)]
+
+  RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 3,
+    nestedParallel = TRUE,
+    conflevel = 99)
+
+  RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 3,
+    nestedParallel = TRUE,
+    conflevel = 95)
+
+```
+
+
+## Remove some terms from output / include the intercept
+
+```{r confint}
+
+  RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 3,
+    nestedParallel = TRUE,
+    conflevel = 95,
+    excludeTerms = c('cell', 'dosage'),
+    excludeIntercept = FALSE)
+
+  RegParallel(
+    data = df,
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit'),
+        method = 'glm.fit'),
+    FUNtype = 'glm',
+    variables = variables,
+    blocksize = 500,
+    cores = 3,
+    nestedParallel = TRUE,
+    conflevel = 95,
+    excludeTerms = c('cell', 'dosage'),
+    excludeIntercept = TRUE)
+
+```
 
 
 # Acknowledgments

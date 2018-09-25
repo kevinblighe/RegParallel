@@ -36,8 +36,11 @@ RegParallel <- function(
       call. = FALSE)
   }
 
+  if (cores < 1) {
+    stop('Cannot have cores / threads less than 1')
+  }
   message('Cores / Threads:')
-  message('-- ', cores)
+  message('-- ', floor(cores))
 
   if (nestedParallel == TRUE) {
     message('Nesting enabled. Total potential cores + forked threads is:')

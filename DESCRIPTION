@@ -4,12 +4,7 @@ Title: Standard regression functions in R enabled for parallel processing over l
 Version: 0.99.0
 Author: Kevin Blighe
 Maintainer: Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
-Description:
-In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major botteleneck in these is the amount of time that it takes to complete these analyses.
-
-With <i>RegParallel</i>, any number of tests can be performed simultaneously.  On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds.
-
-Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.
+Description: In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major botteleneck in these is the amount of time that it takes to complete these analyses. With <i>RegParallel</i>, any number of tests can be performed simultaneously.  On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds. Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.
 License: GPL-3
 Depends:
   R (>= 3.5.0),
@@ -19,12 +14,13 @@ Depends:
   doMC,
   doParallel,
   data.table,
+  MASS,
   survival
 Imports:
 Suggests:
   RUnit,
   BiocGenerics,
-  knitr
+  knitr,
   DESeq2,
   airway,
   magrittr,
@@ -33,5 +29,6 @@ Suggests:
   biomaRt,
   survminer
 URL: https://github.com/kevinblighe/RegParallel
-biocViews: 
-VignetteBuilder: knitr
+biocViews: DiseaseModel
+VignetteBuilder:
+  knitr

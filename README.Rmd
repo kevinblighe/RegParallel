@@ -4,12 +4,9 @@ author: "Kevin Blighe"
 date: "`r Sys.Date()`"
 package: "`r packageVersion('RegParallel')`"
 output:
-  html_document:
+  github_document:
     toc: true
     toc_depth: 3
-    number_sections: true
-    theme: united
-    highlight: tango
 fig_width: 7
 bibliography: library.bib
 vignette: >

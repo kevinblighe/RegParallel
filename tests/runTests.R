@@ -1,1 +1,1 @@
-BiocGenerics:::testPackage("RegParallel")
+BiocGenerics:::testPackage('RegParallel')

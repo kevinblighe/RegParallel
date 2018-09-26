@@ -1,6 +1,6 @@
-\name{TriosGWAS-package}
-\title{TriosGWAS: Analysis of trios GWAS data via conditional logistic regression with interaction terms.}
+\name{RegParallel-package}
+\title{RegParallel: Standard regression functions in R enabled for parallel processing over large data-frames.}
 
-\description{Reads PLINK trios GWAS family data into R and tests each SNP independently with interaction terms through an additive genotype model using conditional logistic regression (parallel processing enabled). Produces summary stats for each genotype.}
+\description{In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major botteleneck in these is the amount of time that it takes to complete these analyses. With <i>RegParallel</i>, any number of tests can be performed simultaneously.  On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds. Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.}
 
 \docType{package}

@@ -20,7 +20,8 @@ glm.nbParallel(
   cluster,
   nestedParallel,
   conflevel,
-  excludeTerms)
+  excludeTerms,
+  excludeIntercept)
 }
 
 \arguments{}

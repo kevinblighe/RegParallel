@@ -14,6 +14,9 @@ glmParallel <- function(
   excludeTerms,
   excludeIntercept)
 {
+
+  ExpBeta <- l <- NULL
+
   foreach(l = 1:blocks, .combine = rbind, .multicombine = TRUE, .inorder = FALSE, .packages = c("data.table", "doParallel", "parallel", "doMC", "foreach", "BiocParallel")) %dopar% {
 
     # first block - will be executed just once
@@ -25,7 +28,7 @@ glmParallel <- function(
 
       if (nestedParallel == TRUE) {
         if (system == "Windows") {
-            models <- parLapply(cl, formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+            models <- parLapply(cluster, formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
         } else {
             models <- mclapply(formula.list[1:(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
         }
@@ -53,7 +56,7 @@ glmParallel <- function(
 
       # convert to data frames
       if (system == "Windows") {
-        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- parLapply(cluster, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       } else {
         wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       }
@@ -61,19 +64,19 @@ glmParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         }
@@ -139,7 +142,7 @@ glmParallel <- function(
 
       if (nestedParallel == TRUE) {
         if (system == "Windows") {
-          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+          models <- parLapply(cluster, formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
         } else {
           models <- mclapply(formula.list[(1+(blocksize*(l-1))):length(formula.list)], function(f) summary(FUN(formula = f, data = df))$coefficients)
         }
@@ -167,7 +170,7 @@ glmParallel <- function(
 
       # convert to data frames
       if (system == "Windows") {
-        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- parLapply(cluster, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       } else {
         wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       }
@@ -175,19 +178,19 @@ glmParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         }
@@ -252,7 +255,7 @@ glmParallel <- function(
 
       if (nestedParallel == TRUE) {
         if (system == "Windows") {
-          models <- parLapply(cl, formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
+          models <- parLapply(cluster, formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
         } else {
           models <- mclapply(formula.list[(1+(blocksize*(l-1))):(blocksize*l)], function(f) summary(FUN(formula = f, data = df))$coefficients)
         } 
@@ -280,7 +283,7 @@ glmParallel <- function(
 
       # convert to data frames
       if (system == "Windows") {
-        wObjects <- parLapply(cl, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
+        wObjects <- parLapply(cluster, names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       } else {
         wObjects <- mclapply(names(models), function(x) data.frame(rep(x, length(rownames(models[[x]]))), rownames(models[[x]]), models[[x]], row.names=rownames(models[[x]])))
       }
@@ -288,19 +291,19 @@ glmParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep(paste(c("\\(Intercept\\)", excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep("\\(Intercept\\)", rownames(x), invert=TRUE),])
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == "Windows") {
-          wObjects <- parLapply(cl, wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
+          wObjects <- parLapply(cluster, wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         } else {
           wObjects <- mclapply(wObjects, function(x) x[grep(paste(c(excludeTerms), collapse="|"), rownames(x), invert=TRUE),])
         }

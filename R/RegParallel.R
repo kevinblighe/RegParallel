@@ -64,7 +64,7 @@ RegParallel <- function(
     cl <- NULL
     options('mc.cores' = cores)
 
-    registerDoMC(cores)
+    # registerDoMC(cores)
   }
 
   # register cores / threads for doParallel-related functions.

@@ -20,7 +20,8 @@ glmParallel(
   cluster,
   nestedParallel,
   conflevel,
-  excludeTerms)
+  excludeTerms,
+  excludeIntercept)
 }
 
 \arguments{}

@@ -20,7 +20,8 @@ lmParallel(
   cluster,
   nestedParallel,
   conflevel,
-  excludeTerms)
+  excludeTerms,
+  excludeIntercept)
 }
 
 \arguments{}

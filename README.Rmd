@@ -107,7 +107,7 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 
 ```
 
-## Perform the most basic logistic regression analysis.
+## 1. Perform the most basic logistic regression analysis.
 
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>,
 with dexamethasone as the dependent variable.
@@ -136,7 +136,7 @@ with dexamethasone as the dependent variable.
 
 ```
 
-## Perform a basic linear regression.
+## 2. Perform a basic linear regression.
 
 Here, we will perform the linear regression using both <i>glmParallel</i> and
 <i>lmParallel</i>. We will appreciate that a linear regression is the same
@@ -190,7 +190,7 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 ```
 
 
-## Perform the most basic negative binomial logistic regression analysis.
+## 3. Perform the most basic negative binomial logistic regression analysis.
 
 Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged
 counts in RNA-seq naturally follow a negative binomial / Poisson-like
@@ -223,7 +223,7 @@ distribution. <i>glm.nbParallel</i> will be used.
 ```
 
 
-## Survival analysis via Cox Proportional Hazards regression.
+## 4. Survival analysis via Cox Proportional Hazards regression.
 
 For this example, we will load breast cancer gene expression data with
 recurrence free survival (RFS) from
@@ -462,7 +462,7 @@ Plot the survival curves and place Log Rank p-value in the plots:
 
 ```
 
-## Perform a conditional logistic regression
+## 5. Perform a conditional logistic regression
 
 In this example, we will re-use the Cox data for the purpose of performing
 conditional logistic regression with tumour grade as our grouping / matching
@@ -555,7 +555,7 @@ numbers of cores, enable 'nested' parallel processing, modify limits for
 confidence intervals, and exclude certain model terms from output.
 
 
-## Speed up processing
+## 1. Speed up processing
 
 First create some test data for the purpose of benchmarking:
 
@@ -677,11 +677,11 @@ First create some test data for the purpose of benchmarking:
 ```
 
 Focusing on the elapsed time (as system time only reports time from the last
-core that finished), we can see that nested processing has no effect or is
-actually slower over a small number of variables. This is likely due to the
-system being slowed by simply managing the larger number of threads. Nested
-processing's benefits can only be gained when processing a large number of
-variables:
+core that finished), we can see that nested processing has negligible
+improvementct or may actually be slower under certain conditions when tested
+over a small number of variables. This is likely due to the system being
+slowed by simply managing the larger number of threads. Nested processing's
+benefits can only be gained when processing a large number of variables:
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, TRUE
 
@@ -727,17 +727,29 @@ variables:
   variables <- colnames(df)[4:ncol(df)]
 
   system.time(RegParallel(
+
     data = df,
+
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
     FUN = function(formula, data)
+
       glm(formula = formula,
+
         data = data,
+
         family = binomial(link = 'logit'),
+
         method = 'glm.fit'),
+
     FUNtype = 'glm',
+
     variables = variables,
+
     blocksize = 2000,
+
     cores = 2,
+
     nestedParallel = FALSE))
 
 ```
@@ -747,6 +759,9 @@ huge gains in time. Performance is a trade-off between cores, forked threads,
 blocksize, and the number of terms in each model.
 
 ### ~40000 tests; blocksize, 5000; cores, 3; nestedParallel, TRUE
+
+In this example, we choose a large blocksize and 3 cores. With nestedParallel
+enabled, this translates to 9 simultaneous threads.
 
 ```{r speedup6}
 
@@ -773,7 +788,7 @@ blocksize, and the number of terms in each model.
 
     variables = variables,
 
-    blocksize = 500,
+    blocksize = 5000,
 
     cores = 3,
 
@@ -781,13 +796,14 @@ blocksize, and the number of terms in each model.
 
 ```
 
-## Modify confidence intervals
+## 2. Modify confidence intervals
 
 ```{r confint}
 
-  df <- modelling[ ,1:1000]
+  df <- modelling[ ,1:500]
   variables <- colnames(df)[4:ncol(df)]
 
+  # 99% confidfence intervals
   RegParallel(
 
     data = df,
@@ -808,7 +824,7 @@ blocksize, and the number of terms in each model.
 
     variables = variables,
 
-    blocksize = 300,
+    blocksize = 150,
 
     cores = 3,
 
@@ -816,6 +832,7 @@ blocksize, and the number of terms in each model.
 
     conflevel = 99)
 
+  # 95% confidfence intervals (default)
   RegParallel(
 
     data = df,
@@ -836,7 +853,7 @@ blocksize, and the number of terms in each model.
 
     variables = variables,
 
-    blocksize = 500,
+    blocksize = 150,
 
     cores = 3,
 
@@ -847,10 +864,11 @@ blocksize, and the number of terms in each model.
 ```
 
 
-## Remove some terms from output / include the intercept
+## 3. Remove some terms from output / include the intercept
 
 ```{r removeterms}
 
+  # remove terms but keep Intercept
   RegParallel(
 
     data = df,
@@ -871,7 +889,7 @@ blocksize, and the number of terms in each model.
 
     variables = variables,
 
-    blocksize = 500,
+    blocksize = 150,
 
     cores = 3,
 
@@ -883,6 +901,7 @@ blocksize, and the number of terms in each model.
 
     excludeIntercept = FALSE)
 
+  # remove everything but the variable being tested
   RegParallel(
 
     data = df,
@@ -903,7 +922,7 @@ blocksize, and the number of terms in each model.
 
     variables = variables,
 
-    blocksize = 500,
+    blocksize = 150,
 
     cores = 3,
 
@@ -935,6 +954,6 @@ sessionInfo()
 
 ```
 
-## References
+# References
 
 @RegParallel

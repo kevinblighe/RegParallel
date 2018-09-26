@@ -5,7 +5,7 @@ RegParallel <- function(
   FUNtype,
   variables,
   blocksize = 500,
-  cores = 2,
+  cores = 3,
   nestedParallel = FALSE,
   conflevel = 95,
   excludeTerms = NULL,

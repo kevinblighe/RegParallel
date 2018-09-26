@@ -18,7 +18,7 @@ RegParallel(
   FUNtype,
   variables,
   blocksize = 500,
-  cores = 2,
+  cores = 3,
   nestedParallel = FALSE,
   conflevel = 95,
   excludeTerms = NULL,
@@ -41,7 +41,7 @@ RegParallel(
   formula. REQUIRED.}
   \item{blocksize}{Number of variables to test in each foreach loop.
   DEFAULT = 500. OPTIONAL.}
-  \item{cores}{CPU cores / threads. DEFAULT = 2. OPTIONAL.}
+  \item{cores}{CPU cores / threads. DEFAULT = 3. OPTIONAL.}
   \item{nestedParallel}{In RegParallel, parallelisation initially occurs at
   the block level, ie., multiple blocks of models are processed in parallel.
   If nestedParallel is enabled, a second level of parallelisation occurs

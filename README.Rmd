@@ -598,6 +598,9 @@ First create some test data for the purpose of benchmarking:
 
 ### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, TRUE
 
+With 2 cores instead of the default of 3, coupled with nestedParallel being
+enabled, a total of  2 x 2 = 4 threads will be used.
+
 ```{r speedup2}
 
   df <- modelling[ ,1:2000]
@@ -945,6 +948,8 @@ contributions from:
 [Jessica Lasky-Su](https://connects.catalyst.harvard.edu/Profiles/display/Person/79780),
 [Myles Lewis](https://www.qmul.ac.uk/whri/people/academic-staff/items/lewismyles.html),
 [Michael Barnes](https://www.qmul.ac.uk/whri/people/academic-staff/items/barnesmichael.html)
+
+Thanks also to Horacio Montenegro for testing.
 
 # Session info
 

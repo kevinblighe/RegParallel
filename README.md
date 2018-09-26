@@ -1,16 +1,16 @@
 Standard regression functions in R enabled for parallel processing over large data-frames
 ================
 Kevin Blighe
-2018-09-25
+2018-09-26
 
 -   [Introduction.](#introduction.)
 -   [Installation.](#installation.)
     -   [1. Download the package from Bioconductor.](#download-the-package-from-bioconductor.)
     -   [2. Load the package into R session.](#load-the-package-into-r-session.)
 -   [Quick start.](#quick-start.)
-    -   [Perform the most basic regression analysis.](#perform-the-most-basic-regression-analysis.)
+    -   [Perform the most basic logistic regression analysis.](#perform-the-most-basic-logistic-regression-analysis.)
     -   [Perform a basic linear regression.](#perform-a-basic-linear-regression.)
-    -   [Perform the most basic negative binomial logistic regression analysis with glm.nbParallel:](#perform-the-most-basic-negative-binomial-logistic-regression-analysis-with-glm.nbparallel)
+    -   [Perform the most basic negative binomial logistic regression analysis.](#perform-the-most-basic-negative-binomial-logistic-regression-analysis.)
     -   [Survival analysis via Cox Proportional Hazards regression.](#survival-analysis-via-cox-proportional-hazards-regression.)
     -   [Perform a conditional logistic regression](#perform-a-conditional-logistic-regression)
 -   [Advanced features.](#advanced-features.)
@@ -29,9 +29,9 @@ Kevin Blighe
 Introduction.
 =============
 
-In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major botteleneck in these is the amount of time that it takes to complete these analyses.
+In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major bottleneck in these is the amount of time that it takes to complete these analyses.
 
-With <i>RegParallel</i>, any number of tests can be performed simultaneously. On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing.
+With <i>RegParallel</i>, a large number of tests can be performed simultaneously. On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing.
 
 Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.
 
@@ -76,28 +76,45 @@ data("airway")
 airway$dex %<>% relevel("untrt")
 ```
 
-Normalise the raw counts in DESeq2 and produce regularised log counts:
+Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 
 ``` r
 library(DESeq2)
 
 dds <- DESeqDataSet(airway, design = ~dex + cell)
+
 dds <- DESeq(dds, betaPrior = FALSE)
+
 rlogcounts <- assay(rlog(dds, blind = FALSE))
+
 rlogdata <- data.frame(colData(airway), t(rlogcounts))
 ```
 
-Perform the most basic regression analysis.
--------------------------------------------
+Perform the most basic logistic regression analysis.
+----------------------------------------------------
 
-Here, we fit a binomial logistic regression model to the data via glmParallel:
+Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>, with dexamethasone as the dependent variable.
 
 ``` r
-res1 <- RegParallel(data = rlogdata[, 1:3000], formula = "dex ~ [*]", FUN = function(formula, 
-    data) glm(formula = formula, data = data, family = binomial(link = "logit")), 
-    FUNtype = "glm", variables = colnames(rlogdata)[10:3000])
+    res1 <- RegParallel(
 
-res1[order(res1$P, decreasing = FALSE), ]
+      data = rlogdata[ ,1:3000],
+
+      formula = 'dex ~ [*]',
+
+      FUN = function(formula, data)
+
+        glm(formula = formula,
+
+          data = data,
+
+          family = binomial(link = 'logit')),
+
+      FUNtype = 'glm',
+
+      variables = colnames(rlogdata)[10:3000])
+
+    res1[order(res1$P, decreasing=FALSE),]
 ```
 
     ##              Variable            Term       Beta StandardError
@@ -128,21 +145,49 @@ res1[order(res1$P, decreasing = FALSE), ]
 Perform a basic linear regression.
 ----------------------------------
 
-Here, we will perform the linear regression using both glmParallel and lmParallel. We will appreciate that a linear regression is the same using either function with the default settings.
+Here, we will perform the linear regression using both <i>glmParallel</i> and <i>lmParallel</i>. We will appreciate that a linear regression is the same using either function with the default settings.
 
-Regularised log counts from our DESeq2 data will be used.
+Regularised log counts from our <i>DESeq2</i> data will be used.
 
 ``` r
-rlogdata <- rlogdata[, 1:2000]
+  rlogdata <- rlogdata[ ,1:2000]
 
-res2 <- RegParallel(data = rlogdata, formula = "[*] ~ cell", FUN = function(formula, 
-    data) glm(formula = formula, data = data, method = "glm.fit"), FUNtype = "glm", 
+  res2 <- RegParallel(
+
+    data = rlogdata,
+
+    formula = '[*] ~ cell',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
     variables = colnames(rlogdata)[10:ncol(rlogdata)])
 
-res3 <- RegParallel(data = rlogdata, formula = "[*] ~ cell", FUN = function(formula, 
-    data) lm(formula = formula, data = data), FUNtype = "lm", variables = colnames(rlogdata)[10:ncol(rlogdata)])
 
-subset(res2, P < 0.05)
+  res3 <- RegParallel(
+
+    data = rlogdata,
+
+    formula = '[*] ~ cell',
+
+    FUN = function(formula, data)
+
+      lm(formula = formula,
+
+        data = data),
+
+    FUNtype = 'lm',
+
+    variables = colnames(rlogdata)[10:ncol(rlogdata)])
+
+  subset(res2, P<0.05)
 ```
 
     ##             Variable        Term        Beta StandardError          t
@@ -171,7 +216,7 @@ subset(res2, P < 0.05)
     ## 523: 0.0282890537 0.7513552 0.6359690 0.8876762
 
 ``` r
-subset(res3, P < 0.05)
+  subset(res3, P<0.05)
 ```
 
     ##             Variable        Term        Beta StandardError          t
@@ -199,19 +244,33 @@ subset(res3, P < 0.05)
     ## 522: 0.0177922771 1.0608458 1.0296864 1.0929482
     ## 523: 0.0282890537 0.7513552 0.6359690 0.8876762
 
-Perform the most basic negative binomial logistic regression analysis with glm.nbParallel:
-------------------------------------------------------------------------------------------
+Perform the most basic negative binomial logistic regression analysis.
+----------------------------------------------------------------------
 
-Here, we will utilise normalised, unlogged counts from DESeq2.
+Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged counts in RNA-seq naturally follow a negative binomial / Poisson-like distribution. <i>glm.nbParallel</i> will be used.
 
 ``` r
-nbcounts <- round(counts(dds, normalized = TRUE), 0)
-nbdata <- data.frame(colData(airway), t(nbcounts))
+    nbcounts <- round(counts(dds, normalized = TRUE), 0)
 
-res4 <- RegParallel(data = nbdata[, 1:3000], formula = "[*] ~ dex", FUN = function(formula, 
-    data) glm.nb(formula = formula, data = data), FUNtype = "glm.nb", variables = colnames(nbdata)[10:3000])
+    nbdata <- data.frame(colData(airway), t(nbcounts))
 
-res4[order(res4$Theta, decreasing = TRUE), ]
+    res4 <- RegParallel(
+
+      data = nbdata[ ,1:3000],
+
+      formula = '[*] ~ dex',
+
+      FUN = function(formula, data)
+
+        glm.nb(formula = formula,
+
+          data = data),
+
+      FUNtype = 'glm.nb',
+
+      variables = colnames(nbdata)[10:3000])
+
+    res4[order(res4$Theta, decreasing = TRUE),]
 ```
 
     ##              Variable   Term         Beta StandardError          Z
@@ -259,71 +318,103 @@ For this example, we will load breast cancer gene expression data with recurrenc
 First, let's read in and prepare the data
 
 ``` r
-library(Biobase)
+  library(Biobase)
 
-library(GEOquery)
+  library(GEOquery)
 
-# load series and platform data from GEO
-gset <- getGEO("GSE2990", GSEMatrix = TRUE, getGPL = FALSE)
+  # load series and platform data from GEO
+  gset <- getGEO('GSE2990', GSEMatrix =TRUE, getGPL=FALSE)
 
-x <- exprs(gset[[1]])
+  x <- exprs(gset[[1]])
 
-# remove Affymetrix control probes
-x <- x[-grep("^AFFX", rownames(x)), ]
+  # remove Affymetrix control probes
+  x <- x[-grep('^AFFX', rownames(x)),]
 
-# transform the expression data to Z scores
-x <- t(scale(t(x)))
+  # transform the expression data to Z scores
+  x <- t(scale(t(x)))
 
-# extract information of interest from the phenotype data (pdata)
-idx <- which(colnames(pData(gset[[1]])) %in% c("age:ch1", "distant rfs:ch1", 
-    "er:ch1", "ggi:ch1", "grade:ch1", "node:ch1", "size:ch1", "time rfs:ch1"))
+  # extract information of interest from the phenotype data (pdata)
+  idx <- which(colnames(pData(gset[[1]])) %in%
 
-metadata <- data.frame(pData(gset[[1]])[, idx], row.names = rownames(pData(gset[[1]])))
+    c('age:ch1', 'distant rfs:ch1', 'er:ch1',
 
-# remove samples from the pdata that have any NA value
-discard <- apply(metadata, 1, function(x) any(is.na(x)))
-metadata <- metadata[!discard, ]
+      'ggi:ch1', 'grade:ch1', 'node:ch1',
 
-# filter the Z-scores expression data to match the samples in our pdata
-x <- x[, which(colnames(x) %in% rownames(metadata))]
+      'size:ch1', 'time rfs:ch1'))
 
-# check that sample names match exactly between pdata and Z-scores
-all((colnames(x) == rownames(metadata)) == TRUE)
+  metadata <- data.frame(pData(gset[[1]])[,idx],
+
+    row.names = rownames(pData(gset[[1]])))
+
+  # remove samples from the pdata that have any NA value
+  discard <- apply(metadata, 1, function(x) any(is.na(x)))
+
+  metadata <- metadata[!discard,]
+
+  # filter the Z-scores expression data to match the samples in our pdata
+  x <- x[,which(colnames(x) %in% rownames(metadata))]
+
+  # check that sample names match exactly between pdata and Z-scores 
+  all((colnames(x) == rownames(metadata)) == TRUE)
 ```
 
     ## [1] TRUE
 
 ``` r
-# create a merged pdata and Z-scores object
-coxdata <- data.frame(metadata, t(x))
+  # create a merged pdata and Z-scores object
+  coxdata <- data.frame(metadata, t(x))
 
-# tidy column names
-colnames(coxdata)[1:8] <- c("Age", "Distant.RFS", "ER", "GGI", "Grade", "Node", 
-    "Size", "Time.RFS")
+  # tidy column names
+  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
 
-# prepare certain phenotypes
-coxdata$Age <- as.numeric(gsub("^KJ", "", coxdata$Age))
-coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
-coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
-coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
-coxdata$Time.RFS <- as.numeric(gsub("^KJX|^KJ", "", coxdata$Time.RFS))
+    'GGI', 'Grade', 'Node',
+
+    'Size', 'Time.RFS')
+
+  # prepare certain phenotypes
+  coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
+
+  coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
+
+  coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
+
+  coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
+
+  coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
 ```
 
-With the data prepared, we can now apply a Cox Proportional Hazards model indpendently for each probe in the dataset against RFS.
+With the data prepared, we can now apply a Cox Proportional Hazards model independently for each probe in the dataset against RFS.
 
 In this we also increase the default blocksize to 2000 in order to speed up the analysis.
 
 ``` r
-library(survival)
+  library(survival)
 
-res5 <- RegParallel(data = coxdata, formula = "Surv(Time.RFS, Distant.RFS) ~ [*]", 
-    FUN = function(formula, data) coxph(formula = formula, data = data, ties = "breslow", 
-        singular.ok = TRUE), FUNtype = "coxph", variables = colnames(coxdata)[9:ncol(coxdata)], 
+  res5 <- RegParallel(
+
+    data = coxdata,
+
+    formula = 'Surv(Time.RFS, Distant.RFS) ~ [*]',
+
+    FUN = function(formula, data)
+
+      coxph(formula = formula,
+
+        data = data,
+
+        ties = 'breslow',
+
+        singular.ok = TRUE),
+
+    FUNtype = 'coxph',
+
+    variables = colnames(coxdata)[9:ncol(coxdata)],
+
     blocksize = 2000)
 
-res5 <- res5[!is.na(res5$P), ]
+  res5 <- res5[!is.na(res5$P),]
 
-res5
+  res5
 ```
 
     ##           Variable        Term          Beta StandardError             Z
@@ -366,61 +457,117 @@ res5
 We now take the top probes from the model by Log Rank p-value and use <i>biomaRt</i> to look up the corresponding gene symbols.
 
 ``` r
-res5 <- res5[order(res5$LogRank, decreasing = FALSE), ]
+  res5 <- res5[order(res5$LogRank, decreasing = FALSE),]
 
-final <- subset(res5, LogRank < 0.01)
+  final <- subset(res5, LogRank < 0.01)
 
-probes <- gsub("^X", "", final$Variable)
+  probes <- gsub('^X', '', final$Variable)
 
-library(biomaRt)
-mart <- useMart("ENSEMBL_MART_ENSEMBL")
-mart <- useDataset("hsapiens_gene_ensembl", mart)
-annotLookup <- getBM(mart = mart, attributes = c("affy_hg_u133a", "ensembl_gene_id", 
-    "gene_biotype", "external_gene_name"), filter = "affy_hg_u133a", values = probes, 
+  library(biomaRt)
+
+  mart <- useMart('ENSEMBL_MART_ENSEMBL')
+
+  mart <- useDataset("hsapiens_gene_ensembl", mart)
+
+  annotLookup <- getBM(mart = mart,
+
+    attributes = c('affy_hg_u133a',
+
+      'ensembl_gene_id',
+
+      'gene_biotype',
+
+      'external_gene_name'),
+
+    filter = 'affy_hg_u133a',
+
+    values = probes,
+
     uniqueRows = TRUE)
 ```
 
-Two of the top hits include <i>CXCL12</i> and <i>MMP10</i>. High expression of <i>CXCL12</i> was previously associated with good progression free and overall survival in breast cancer in (doi: 10.1016/j.cca.2018.05.041.)\[<https://www.ncbi.nlm.nih.gov/pubmed/29800557>\], whilst high expression of <i>MMP10</i> was associated with poor prognosis in colon cancer in (doi: 10.1186/s12885-016-2515-7)\[<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4950722/>\].
+Two of the top hits include <i>CXCL12</i> and <i>MMP10</i>. High expression of <i>CXCL12</i> was previously associated with good progression free and overall survival in breast cancer in (doi: 10.1016/j.cca.2018.05.041.)\[<https://www.ncbi.nlm.nih.gov/pubmed/29800557>\] , whilst high expression of <i>MMP10</i> was associated with poor prognosis in colon cancer in (doi: 10.1186/s12885-016-2515-7)\[<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4950722/>\].
 
 We can further explore the role of these genes to RFS by dividing their gene expression Z-scores into tertiles for low, mid, and high expression:
 
 ``` r
-# extract RFS and probe data for downstream analysis
-survplotdata <- coxdata[, c("Time.RFS", "Distant.RFS", "X203666_at", "X205680_at")]
-colnames(survplotdata) <- c("Time.RFS", "Distant.RFS", "CXCL12", "MMP10")
+  # extract RFS and probe data for downstream analysis
+  survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
 
-# set Z-scale cut-offs for high and low expression
-highExpr <- 1
-lowExpr <- 1
+    'X203666_at', 'X205680_at')]
 
-# encode the expression for CXCL12 and MMP10 as low, mid, and high
-survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, "High", ifelse(x <= 
-    lowExpr, "Low", "Mid"))
-survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, "High", ifelse(x <= 
-    lowExpr, "Low", "Mid"))
+  colnames(survplotdata) <- c('Time.RFS', 'Distant.RFS',
 
-# relevel the factors to have mid as the reference level
-survplotdata$CXCL12 <- factor(survplotdata$CXCL12, levels = c("Mid", "Low", 
-    "High"))
-survplotdata$MMP10 <- factor(survplotdata$MMP10, levels = c("Mid", "Low", "High"))
+    'CXCL12', 'MMP10')
+
+  # set Z-scale cut-offs for high and low expression
+  highExpr <- 1.0
+
+  lowExpr <- 1.0
+
+  # encode the expression for CXCL12 and MMP10 as low, mid, and high
+  survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, 'High',
+
+    ifelse(x <= lowExpr, 'Low', 'Mid'))
+
+  survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, 'High',
+
+    ifelse(x <= lowExpr, 'Low', 'Mid'))
+
+  # relevel the factors to have mid as the reference level
+  survplotdata$CXCL12 <- factor(survplotdata$CXCL12,
+
+    levels = c('Mid', 'Low', 'High'))
+
+  survplotdata$MMP10 <- factor(survplotdata$MMP10,
+
+    levels = c('Mid', 'Low', 'High'))
 ```
 
-Plot the survival curves and place Log RAnk p-value in the plots:
+Plot the survival curves and place Log Rank p-value in the plots:
 
 ``` r
-library(survminer)
+  library(survminer)
 
-ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12, data = survplotdata), 
-    data = survplotdata, risk.table = TRUE, pval = TRUE, break.time.by = 500, 
-    ggtheme = theme_minimal(), risk.table.y.text.col = TRUE, risk.table.y.text = FALSE)
+  ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12,
+
+    data = survplotdata),
+
+    data = survplotdata,
+
+    risk.table = TRUE,
+
+    pval = TRUE,
+
+    break.time.by = 500,
+
+    ggtheme = theme_minimal(),
+
+    risk.table.y.text.col = TRUE,
+
+    risk.table.y.text = FALSE)
 ```
 
 ![Survival analysis via Cox Proportional Hazards regression.](README_files/figure-markdown_github/coxphParallel5-1.png)
 
 ``` r
-ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ MMP10, data = survplotdata), 
-    data = survplotdata, risk.table = TRUE, pval = TRUE, break.time.by = 500, 
-    ggtheme = theme_minimal(), risk.table.y.text.col = TRUE, risk.table.y.text = FALSE)
+  ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ MMP10,
+
+    data = survplotdata),
+
+    data = survplotdata,
+
+    risk.table = TRUE,
+
+    pval = TRUE,
+
+    break.time.by = 500,
+
+    ggtheme = theme_minimal(),
+
+    risk.table.y.text.col = TRUE,
+
+    risk.table.y.text = FALSE)
 ```
 
 ![Survival analysis via Cox Proportional Hazards regression.](README_files/figure-markdown_github/coxphParallel5-2.png)
@@ -431,23 +578,51 @@ Perform a conditional logistic regression
 In this example, we will re-use the Cox data for the purpose of performing conditional logistic regression with tumour grade as our grouping / matching factor. For this example, we will use ER status as the dependent variable and also adjust for age.
 
 ``` r
-x <- exprs(gset[[1]])
-x <- x[-grep("^AFFX", rownames(x)), ]
-x <- scale(x)
-x <- x[, which(colnames(x) %in% rownames(metadata))]
-coxdata <- data.frame(metadata, t(x))
-colnames(coxdata)[1:8] <- c("Age", "Distant.RFS", "ER", "GGI", "Grade", "Node", 
-    "Size", "Time.RFS")
-coxdata$Age <- as.numeric(gsub("^KJ", "", coxdata$Age))
-coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
-coxdata$ER <- as.numeric(coxdata$ER)
-coxdata <- coxdata[!is.na(coxdata$ER), ]
+  x <- exprs(gset[[1]])
 
-res6 <- RegParallel(data = coxdata, formula = "ER ~ [*] + Age + strata(Grade)", 
-    FUN = function(formula, data) clogit(formula = formula, data = data, method = "breslow"), 
-    FUNtype = "clogit", variables = colnames(coxdata)[9:ncol(coxdata)], blocksize = 2000)
+  x <- x[-grep('^AFFX', rownames(x)),]
 
-subset(res6, P < 0.01)
+  x <- scale(x)
+
+  x <- x[,which(colnames(x) %in% rownames(metadata))]
+
+  coxdata <- data.frame(metadata, t(x))
+
+  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
+
+    'GGI', 'Grade', 'Node',
+
+    'Size', 'Time.RFS')
+
+  coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
+
+  coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
+
+  coxdata$ER <- as.numeric(coxdata$ER)
+
+  coxdata <- coxdata[!is.na(coxdata$ER),]
+
+  res6 <- RegParallel(
+
+    data = coxdata,
+
+    formula = 'ER ~ [*] + Age + strata(Grade)',
+
+    FUN = function(formula, data)
+
+      clogit(formula = formula,
+
+        data = data,
+
+        method = 'breslow'),
+
+    FUNtype = 'clogit',
+
+    variables = colnames(coxdata)[9:ncol(coxdata)],
+
+    blocksize = 2000)
+
+  subset(res6, P < 0.01)
 ```
 
     ##        Variable         Term       Beta StandardError         Z
@@ -470,9 +645,29 @@ subset(res6, P < 0.01)
     ## 5:  0.718302
 
 ``` r
-getBM(mart = mart, attributes = c("affy_hg_u133a", "ensembl_gene_id", "gene_biotype", 
-    "external_gene_name"), filter = "affy_hg_u133a", values = c("204667_at", 
-    "205225_at", "207813_s_at", "212108_at", "219497_s_at"), uniqueRows = TRUE)
+  getBM(mart = mart,
+
+    attributes = c('affy_hg_u133a',
+
+      'ensembl_gene_id',
+
+      'gene_biotype',
+
+      'external_gene_name'),
+
+    filter = 'affy_hg_u133a',
+
+    values = c('204667_at',
+
+      '205225_at',
+
+      '207813_s_at',
+
+      '212108_at',
+
+      '219497_s_at'),
+
+    uniqueRows=TRUE)
 ```
 
     ##   affy_hg_u133a ensembl_gene_id   gene_biotype external_gene_name
@@ -481,7 +676,7 @@ getBM(mart = mart, attributes = c("affy_hg_u133a", "ensembl_gene_id", "gene_biot
     ## 3   207813_s_at ENSG00000161513 protein_coding               FDXR
     ## 4   219497_s_at ENSG00000119866 protein_coding             BCL11A
 
-<i>Oestrogen receptor (ESR1)</i> comes out top - makes sense! Also, although 204667\_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>, which also makes sense in relation to oestrogen signalling.
+Oestrogen receptor (<i>ESR1</i>) comes out top - makes sense! Also, although 204667\_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>, which also makes sense in relation to oestrogen signalling.
 
 Advanced features.
 ==================
@@ -494,70 +689,160 @@ Speed up processing
 First create some test data for the purpose of benchmarking:
 
 ``` r
-options(scipen = 10)
-options(digits = 6)
+  options(scipen=10)
 
-col <- 60000
-row <- 20
-mat <- matrix(rexp(col * row, rate = 0.1), ncol = col)
-colnames(mat) <- paste0("gene", 1:ncol(mat))
-rownames(mat) <- paste0("sample", 1:nrow(mat))
+  options(digits=6)
 
-modelling <- data.frame(cell = rep(c("B", "T"), nrow(mat)/2), group = c(rep(c("treatment"), 
-    nrow(mat)/2), rep(c("control"), nrow(mat)/2)), dosage = t(data.frame(matrix(rexp(row, 
-    rate = 1), ncol = row))), mat, row.names = rownames(mat))
+  # create a data-matrix of 20 x 60000 (rows x cols) random numbers
+  col <- 60000
+
+  row <- 20
+
+  mat <- matrix(
+
+    rexp(col*row, rate = .1),
+
+    ncol = col)
+
+  # add fake gene and sample names
+  colnames(mat) <- paste0('gene', 1:ncol(mat))
+
+  rownames(mat) <- paste0('sample', 1:nrow(mat))
+
+  # add some fake metadata
+  modelling <- data.frame(
+
+    cell = rep(c('B', 'T'), nrow(mat) / 2),
+
+    group = c(rep(c('treatment'), nrow(mat) / 2), rep(c('control'), nrow(mat) / 2)),
+
+    dosage = t(data.frame(matrix(rexp(row, rate = 1), ncol = row))),
+
+    mat,
+
+    row.names = rownames(mat))
 ```
 
 ### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, TRUE
 
 ``` r
-df <- modelling[, 1:2000]
-variables <- colnames(df)[4:ncol(df)]
+  df <- modelling[ ,1:2000]
 
-ptm <- proc.time()
-res <- RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 2, nestedParallel = TRUE)
-proc.time() - ptm
+  variables <- colnames(df)[4:ncol(df)]
+
+  ptm <- proc.time()
+
+  res <- RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 500,
+
+    cores = 2,
+
+    nestedParallel = TRUE)
+
+  proc.time() - ptm
 ```
 
     ##    user  system elapsed 
-    ##  12.876   4.764  11.599
+    ##  12.624   4.832  11.300
 
 ### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, FALSE
 
 ``` r
-df <- modelling[, 1:2000]
-variables <- colnames(df)[4:ncol(df)]
+  df <- modelling[ ,1:2000]
 
-ptm <- proc.time()
-res <- RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 2, nestedParallel = FALSE)
-proc.time() - ptm
+  variables <- colnames(df)[4:ncol(df)]
+
+  ptm <- proc.time()
+
+  res <- RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 500,
+
+    cores = 2,
+
+    nestedParallel = FALSE)
+
+  proc.time() - ptm
 ```
 
     ##    user  system elapsed 
-    ##  10.660   2.340  11.637
+    ##   1.372   0.192  11.333
 
 Focusing on the elapsed time (as system time only reports time from the last core that finished), we can see that nested processing has no effect or is actually slower over a small number of variables. This is likely due to the system being slowed by simply managing the larger number of threads. Nested processing's benefits can only be gained when processing a large number of variables:
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, TRUE
 
 ``` r
-df <- modelling[, 1:40000]
-variables <- colnames(df)[4:ncol(df)]
+  df <- modelling[ ,1:40000]
 
-system.time(RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 2000, 
-    cores = 2, nestedParallel = TRUE))
+  variables <- colnames(df)[4:ncol(df)]
+
+  system.time(RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 2000,
+
+    cores = 2,
+
+    nestedParallel = TRUE))
 ```
 
     ##    user  system elapsed 
-    ## 309.852  29.056 201.594
+    ## 304.592  29.468 201.963
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, FALSE
 
@@ -572,163 +857,282 @@ system.time(RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage
 ```
 
     ##    user  system elapsed 
-    ## 270.164  19.040 263.979
+    ## 272.388  19.352 266.111
 
 Performance is system-dependent and even increasing cores may not result in huge gains in time. Performance is a trade-off between cores, forked threads, blocksize, and the number of terms in each model.
 
 ### ~40000 tests; blocksize, 5000; cores, 3; nestedParallel, TRUE
 
 ``` r
-df <- modelling[, 1:40000]
-variables <- colnames(df)[4:ncol(df)]
+  df <- modelling[,1:40000]
+  variables <- colnames(df)[4:ncol(df)]
 
-system.time(RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 3, nestedParallel = TRUE))
+  system.time(RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 500,
+
+    cores = 3,
+
+    nestedParallel = TRUE))
 ```
 
     ##    user  system elapsed 
-    ## 474.700 211.424 208.880
+    ## 472.060 220.836 215.987
 
 Modify confidence intervals
 ---------------------------
 
 ``` r
-df <- modelling[, 1:1000]
-variables <- colnames(df)[4:ncol(df)]
+  df <- modelling[ ,1:1000]
+  variables <- colnames(df)[4:ncol(df)]
 
-RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 3, nestedParallel = TRUE, conflevel = 99)
+  RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 300,
+
+    cores = 3,
+
+    nestedParallel = TRUE,
+
+    conflevel = 99)
 ```
 
-    ##       Variable         Term        Beta StandardError          Z        P
-    ##    1:    gene1        gene1  0.16554942     0.1049014  1.5781428 0.114533
-    ##    2:    gene1 cellB:dosage -0.41148815     0.5609013 -0.7336196 0.463181
-    ##    3:    gene1 cellT:dosage  0.64680114     0.9348007  0.6919134 0.488992
-    ##    4:    gene2        gene2  0.00108501     0.0584285  0.0185699 0.985184
-    ##    5:    gene2 cellB:dosage -0.29819946     0.4797355 -0.6215914 0.534211
-    ##   ---                                                                    
-    ## 2987:  gene996 cellB:dosage -0.29819786     0.4794249 -0.6219908 0.533948
-    ## 2988:  gene996 cellT:dosage  0.24119659     0.7776380  0.3101656 0.756435
-    ## 2989:  gene997      gene997 -0.03448364     0.1154558 -0.2986740 0.765189
-    ## 2990:  gene997 cellB:dosage -0.26387140     0.4923161 -0.5359797 0.591973
-    ## 2991:  gene997 cellT:dosage  0.38915157     0.9256075  0.4204283 0.674173
-    ##             OR  ORlower  ORupper
-    ##    1: 1.180041 0.900632  1.54613
-    ##    2: 0.662663 0.156254  2.81032
-    ##    3: 1.909423 0.171858 21.21457
-    ##    4: 1.001086 0.861210  1.16368
-    ##    5: 0.742153 0.215689  2.55363
-    ##   ---                           
-    ## 2987: 0.742154 0.215862  2.55160
-    ## 2988: 1.272771 0.171724  9.43343
-    ## 2989: 0.966104 0.717575  1.30071
-    ## 2990: 0.768072 0.216104  2.72986
-    ## 2991: 1.475728 0.136006 16.01232
+    ##       Variable         Term       Beta StandardError          Z        P
+    ##    1:    gene1        gene1  0.0800381     0.0672866  1.1895101 0.234239
+    ##    2:    gene1 cellB:dosage  0.1412466     0.6739328  0.2095856 0.833991
+    ##    3:    gene1 cellT:dosage -0.0775408     0.9569496 -0.0810292 0.935419
+    ##    4:    gene2        gene2 -0.0217934     0.0531011 -0.4104131 0.681503
+    ##    5:    gene2 cellB:dosage  0.0496966     0.6611654  0.0751652 0.940083
+    ##   ---                                                                   
+    ## 2987:  gene996 cellB:dosage -0.0920481     0.6679442 -0.1378080 0.890392
+    ## 2988:  gene996 cellT:dosage -0.3085154     0.9713944 -0.3176006 0.750788
+    ## 2989:  gene997      gene997  0.1224279     0.0846651  1.4460262 0.148170
+    ## 2990:  gene997 cellB:dosage -0.2496200     0.7091096 -0.3520189 0.724824
+    ## 2991:  gene997 cellT:dosage -0.5967195     1.0703812 -0.5574831 0.577197
+    ##             OR   ORlower  ORupper
+    ##    1: 1.083328 0.9109378  1.28834
+    ##    2: 1.151709 0.2029716  6.53507
+    ##    3: 0.925389 0.0786711 10.88513
+    ##    4: 0.978442 0.8533609  1.12186
+    ##    5: 1.050952 0.1914071  5.77043
+    ##   ---                            
+    ## 2987: 0.912061 0.1632360  5.09603
+    ## 2988: 0.734537 0.0601652  8.96771
+    ## 2989: 1.130238 0.9087776  1.40567
+    ## 2990: 0.779097 0.1254102  4.84005
+    ## 2991: 0.550615 0.0349499  8.67461
 
 ``` r
-RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 3, nestedParallel = TRUE, conflevel = 95)
+  RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 500,
+
+    cores = 3,
+
+    nestedParallel = TRUE,
+
+    conflevel = 95)
 ```
 
-    ##       Variable         Term        Beta StandardError          Z        P
-    ##    1:    gene1        gene1  0.16554942     0.1049014  1.5781428 0.114533
-    ##    2:    gene1 cellB:dosage -0.41148815     0.5609013 -0.7336196 0.463181
-    ##    3:    gene1 cellT:dosage  0.64680114     0.9348007  0.6919134 0.488992
-    ##    4:    gene2        gene2  0.00108501     0.0584285  0.0185699 0.985184
-    ##    5:    gene2 cellB:dosage -0.29819946     0.4797355 -0.6215914 0.534211
-    ##   ---                                                                    
-    ## 2987:  gene996 cellB:dosage -0.29819786     0.4794249 -0.6219908 0.533948
-    ## 2988:  gene996 cellT:dosage  0.24119659     0.7776380  0.3101656 0.756435
-    ## 2989:  gene997      gene997 -0.03448364     0.1154558 -0.2986740 0.765189
-    ## 2990:  gene997 cellB:dosage -0.26387140     0.4923161 -0.5359797 0.591973
-    ## 2991:  gene997 cellT:dosage  0.38915157     0.9256075  0.4204283 0.674173
-    ##             OR  ORlower  ORupper
-    ##    1: 1.180041 0.960738  1.44940
-    ##    2: 0.662663 0.220726  1.98945
-    ##    3: 1.909423 0.305632 11.92905
-    ##    4: 1.001086 0.892764  1.12255
-    ##    5: 0.742153 0.289829  1.90040
+    ##       Variable         Term       Beta StandardError          Z        P
+    ##    1:    gene1        gene1  0.0800381     0.0672866  1.1895101 0.234239
+    ##    2:    gene1 cellB:dosage  0.1412466     0.6739328  0.2095856 0.833991
+    ##    3:    gene1 cellT:dosage -0.0775408     0.9569496 -0.0810292 0.935419
+    ##    4:    gene2        gene2 -0.0217934     0.0531011 -0.4104131 0.681503
+    ##    5:    gene2 cellB:dosage  0.0496966     0.6611654  0.0751652 0.940083
+    ##   ---                                                                   
+    ## 2987:  gene996 cellB:dosage -0.0920481     0.6679442 -0.1378080 0.890392
+    ## 2988:  gene996 cellT:dosage -0.3085154     0.9713944 -0.3176006 0.750788
+    ## 2989:  gene997      gene997  0.1224279     0.0846651  1.4460262 0.148170
+    ## 2990:  gene997 cellB:dosage -0.2496200     0.7091096 -0.3520189 0.724824
+    ## 2991:  gene997 cellT:dosage -0.5967195     1.0703812 -0.5574831 0.577197
+    ##             OR   ORlower ORupper
+    ##    1: 1.083328 0.9494796 1.23605
+    ##    2: 1.151709 0.3073902 4.31514
+    ##    3: 0.925389 0.1418298 6.03784
+    ##    4: 0.978442 0.8817298 1.08576
+    ##    5: 1.050952 0.2876060 3.84032
     ##   ---                           
-    ## 2987: 0.742154 0.290006  1.89925
-    ## 2988: 1.272771 0.277219  5.84355
-    ## 2989: 0.966104 0.770456  1.21143
-    ## 2990: 0.768072 0.292646  2.01587
-    ## 2991: 1.475728 0.240507  9.05493
+    ## 2987: 0.912061 0.2463025 3.37737
+    ## 2988: 0.734537 0.1094362 4.93022
+    ## 2989: 1.130238 0.9574205 1.33425
+    ## 2990: 0.779097 0.1940869 3.12742
+    ## 2991: 0.550615 0.0675675 4.48702
 
 Remove some terms from output / include the intercept
 -----------------------------------------------------
 
 ``` r
-RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 3, nestedParallel = TRUE, conflevel = 95, excludeTerms = c("cell", 
-        "dosage"), excludeIntercept = FALSE)
+  RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 500,
+
+    cores = 3,
+
+    nestedParallel = TRUE,
+
+    conflevel = 95,
+
+    excludeTerms = c('cell', 'dosage'),
+
+    excludeIntercept = FALSE)
 ```
 
-    ##       Variable        Term        Beta StandardError          Z        P
-    ##    1:    gene1 (Intercept) -1.68014257     1.3018498 -1.2905809 0.196849
-    ##    2:    gene1       gene1  0.16554942     0.1049014  1.5781428 0.114533
-    ##    3:    gene2 (Intercept)  0.08587741     0.9571946  0.0897178 0.928511
-    ##    4:    gene2       gene2  0.00108501     0.0584285  0.0185699 0.985184
-    ##    5:    gene3 (Intercept) -0.27822010     0.8720416 -0.3190445 0.749693
-    ##   ---                                                                   
-    ## 1990:  gene995     gene995 -0.05314197     0.0795063 -0.6683996 0.503879
-    ## 1991:  gene996 (Intercept)  0.08673635     0.8930973  0.0971186 0.922632
-    ## 1992:  gene996     gene996  0.00102571     0.0493882  0.0207682 0.983431
-    ## 1993:  gene997 (Intercept)  0.13794381     0.7477693  0.1844737 0.853642
-    ## 1994:  gene997     gene997 -0.03448364     0.1154558 -0.2986740 0.765189
+    ##       Variable        Term       Beta StandardError         Z        P
+    ##    1:    gene1 (Intercept) -0.5777480     0.9100457 -0.634856 0.525522
+    ##    2:    gene1       gene1  0.0800381     0.0672866  1.189510 0.234239
+    ##    3:    gene2 (Intercept)  0.1855873     0.8344125  0.222417 0.823989
+    ##    4:    gene2       gene2 -0.0217934     0.0531011 -0.410413 0.681503
+    ##    5:    gene3 (Intercept) -0.1505966     1.1334076 -0.132871 0.894296
+    ##   ---                                                                 
+    ## 1990:  gene995     gene995  0.0612087     0.0811282  0.754469 0.450568
+    ## 1991:  gene996 (Intercept) -0.6726119     0.9374250 -0.717510 0.473059
+    ## 1992:  gene996     gene996  0.0830581     0.0622033  1.335270 0.181788
+    ## 1993:  gene997 (Intercept) -0.5354050     0.8817264 -0.607223 0.543703
+    ## 1994:  gene997     gene997  0.1224279     0.0846651  1.446026 0.148170
     ##             OR   ORlower ORupper
-    ##    1: 0.186347 0.0145274 2.39034
-    ##    2: 1.180041 0.9607380 1.44940
-    ##    3: 1.089673 0.1669285 7.11314
-    ##    4: 1.001086 0.8927642 1.12255
-    ##    5: 0.757130 0.1370526 4.18267
+    ##    1: 0.561161 0.0942877 3.33979
+    ##    2: 1.083328 0.9494796 1.23605
+    ##    3: 1.203925 0.2346099 6.17807
+    ##    4: 0.978442 0.8817298 1.08576
+    ##    5: 0.860195 0.0932907 7.93149
     ##   ---                           
-    ## 1990: 0.948245 0.8114184 1.10815
-    ## 1991: 1.090609 0.1894364 6.27877
-    ## 1992: 1.001026 0.9086700 1.10277
-    ## 1993: 1.147911 0.2650976 4.97062
-    ## 1994: 0.966104 0.7704560 1.21143
+    ## 1990: 1.063121 0.9068305 1.24635
+    ## 1991: 0.510374 0.0812738 3.20498
+    ## 1992: 1.086605 0.9618873 1.22749
+    ## 1993: 0.585432 0.1039800 3.29612
+    ## 1994: 1.130238 0.9574205 1.33425
 
 ``` r
-RegParallel(data = df, formula = "factor(group) ~ [*] + (cell:dosage) ^ 2", 
-    FUN = function(formula, data) glm(formula = formula, data = data, family = binomial(link = "logit"), 
-        method = "glm.fit"), FUNtype = "glm", variables = variables, blocksize = 500, 
-    cores = 3, nestedParallel = TRUE, conflevel = 95, excludeTerms = c("cell", 
-        "dosage"), excludeIntercept = TRUE)
+  RegParallel(
+
+    data = df,
+
+    formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
+
+    FUN = function(formula, data)
+
+      glm(formula = formula,
+
+        data = data,
+
+        family = binomial(link = 'logit'),
+
+        method = 'glm.fit'),
+
+    FUNtype = 'glm',
+
+    variables = variables,
+
+    blocksize = 500,
+
+    cores = 3,
+
+    nestedParallel = TRUE,
+
+    conflevel = 95,
+
+    excludeTerms = c('cell', 'dosage'),
+
+    excludeIntercept = TRUE)
 ```
 
-    ##      Variable    Term         Beta StandardError          Z        P
-    ##   1:    gene1   gene1  0.165549419     0.1049014  1.5781428 0.114533
-    ##   2:    gene2   gene2  0.001085014     0.0584285  0.0185699 0.985184
-    ##   3:    gene3   gene3  0.075806046     0.0751546  1.0086683 0.313134
-    ##   4:    gene4   gene4  0.061573792     0.0634040  0.9711345 0.331481
-    ##   5:    gene5   gene5  0.000378096     0.0453364  0.0083398 0.993346
-    ##  ---                                                                
-    ## 993:  gene993 gene993 -0.026328218     0.0384402 -0.6849135 0.493399
-    ## 994:  gene994 gene994  0.024994814     0.0475125  0.5260678 0.598841
-    ## 995:  gene995 gene995 -0.053141965     0.0795063 -0.6683996 0.503879
-    ## 996:  gene996 gene996  0.001025705     0.0493882  0.0207682 0.983431
-    ## 997:  gene997 gene997 -0.034483637     0.1154558 -0.2986740 0.765189
-    ##            OR  ORlower ORupper
-    ##   1: 1.180041 0.960738 1.44940
-    ##   2: 1.001086 0.892764 1.12255
-    ##   3: 1.078753 0.931002 1.24995
-    ##   4: 1.063509 0.939229 1.20423
-    ##   5: 1.000378 0.915322 1.09334
-    ##  ---                          
-    ## 993: 0.974015 0.903328 1.05023
-    ## 994: 1.025310 0.934141 1.12538
-    ## 995: 0.948245 0.811418 1.10815
-    ## 996: 1.001026 0.908670 1.10277
-    ## 997: 0.966104 0.770456 1.21143
+    ##      Variable    Term       Beta StandardError         Z        P       OR
+    ##   1:    gene1   gene1  0.0800381     0.0672866  1.189510 0.234239 1.083328
+    ##   2:    gene2   gene2 -0.0217934     0.0531011 -0.410413 0.681503 0.978442
+    ##   3:    gene3   gene3  0.0131580     0.0547536  0.240312 0.810088 1.013245
+    ##   4:    gene4   gene4 -0.0580564     0.0523485 -1.109037 0.267414 0.943597
+    ##   5:    gene5   gene5 -0.0375423     0.0514796 -0.729266 0.465839 0.963154
+    ##  ---                                                                      
+    ## 993:  gene993 gene993  0.0701837     0.0710134  0.988316 0.322998 1.072705
+    ## 994:  gene994 gene994 -0.0750013     0.0522217 -1.436211 0.150942 0.927742
+    ## 995:  gene995 gene995  0.0612087     0.0811282  0.754469 0.450568 1.063121
+    ## 996:  gene996 gene996  0.0830581     0.0622033  1.335270 0.181788 1.086605
+    ## 997:  gene997 gene997  0.1224279     0.0846651  1.446026 0.148170 1.130238
+    ##       ORlower ORupper
+    ##   1: 0.949480 1.23605
+    ##   2: 0.881730 1.08576
+    ##   3: 0.910140 1.12803
+    ##   4: 0.851584 1.04555
+    ##   5: 0.870715 1.06541
+    ##  ---                 
+    ## 993: 0.933327 1.23290
+    ## 994: 0.837483 1.02773
+    ## 995: 0.906831 1.24635
+    ## 996: 0.961887 1.22749
+    ## 997: 0.957421 1.33425
 
 Acknowledgments
 ===============

@@ -47,26 +47,16 @@ RegParallel <- function(
     message('-- ', cores * cores)
   }
 
-  library(BiocParallel, quietly = TRUE)
-
-  library(foreach, quietly = TRUE)
-
-  library(parallel, quietly = TRUE)
-
   if (system == 'Windows') {
     cl <- makeCluster(getOption('cl.cores', cores))
   } else {
     cl <- NULL
     options('mc.cores' = cores)
 
-    library(doMC, quietly = TRUE)
     registerDoMC(cores)
   }
 
-  library(doParallel, quietly = TRUE)
   registerDoParallel(cores)
-
-  library(data.table, quietly = TRUE)
 
   # determine number of blocks
   blocks <- floor((length(variables)) / blocksize) + 1
@@ -86,7 +76,6 @@ RegParallel <- function(
     terms <- all.vars(as.formula(f))
 
     # if, on the off chance, the user is testing for a variable called 'dummyvar', we have to account for this possibility
-    library(stringr, quietly = TRUE)
     if (str_count(f, 'dummyvar') > 1) {
       terms <- terms
     } else {
@@ -171,8 +160,6 @@ RegParallel <- function(
       excludeTerms = excludeTerms,
       excludeIntercept = excludeIntercept)
   } else if (FUNtype == 'coxph') {
-    library(survival, quiet = TRUE)
-
     res <- coxphParallel(
       data = data,
       formula.list = formula.list,
@@ -188,8 +175,6 @@ RegParallel <- function(
       conflevel = conflevel,
       excludeTerms = excludeTerms)
   } else if (FUNtype == 'clogit') {
-    library(survival, quiet = TRUE)
-
     res <- clogitParallel(
       data = data,
       formula.list = formula.list,
@@ -205,8 +190,6 @@ RegParallel <- function(
       conflevel = conflevel,
       excludeTerms = excludeTerms)
   } else if (FUNtype == 'bayesglm') {
-    library(arm, quiet = TRUE)
-
     res <- bayesglmParallel(
       data = data,
       formula.list = formula.list,

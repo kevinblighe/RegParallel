@@ -14,8 +14,10 @@ Depends:
   doMC,
   doParallel,
   data.table,
-  MASS,
-  survival
+  stringr,
+  survival,
+  arm,
+  MASS
 Imports:
 Suggests:
   RUnit,

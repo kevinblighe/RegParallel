@@ -25,7 +25,6 @@ coxphParallel <- function(
       'foreach', 'BiocParallel')) %dopar% {
 
     # first block - will be executed just once
-    # first block - will be executed just once
     if (l==1) {
       message(paste('Processing ', blocksize,
         ' formulae, batch ', l, ' of ', blocks, sep=''))

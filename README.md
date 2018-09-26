@@ -764,7 +764,7 @@ With 2 cores instead of the default of 3, coupled with nestedParallel being enab
 ```
 
     ##    user  system elapsed 
-    ##  11.436   4.056  10.008
+    ##  11.480   4.052   9.943
 
 ### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, FALSE
 
@@ -805,9 +805,9 @@ With 2 cores instead of the default of 3, coupled with nestedParallel being enab
 ```
 
     ##    user  system elapsed 
-    ##  10.508   2.628  11.552
+    ##   1.300   0.216  11.084
 
-Focusing on the elapsed time (as system time only reports time from the last core that finished), we can see that nested processing has negligible improvementct or may actually be slower under certain conditions when tested over a small number of variables. This is likely due to the system being slowed by simply managing the larger number of threads. Nested processing's benefits can only be gained when processing a large number of variables:
+Focusing on the elapsed time (as system time only reports time from the last core that finished), we can see that nested processing has negligible improvement or may actually be slower under certain conditions when tested over a small number of variables. This is likely due to the system being slowed by simply managing the larger number of threads. Nested processing's benefits can only be gained when processing a large number of variables:
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, TRUE
 
@@ -844,7 +844,7 @@ Focusing on the elapsed time (as system time only reports time from the last cor
 ```
 
     ##    user  system elapsed 
-    ## 293.048  29.188 192.849
+    ## 295.220  29.792 194.771
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, FALSE
 
@@ -880,7 +880,7 @@ Focusing on the elapsed time (as system time only reports time from the last cor
 ```
 
     ##    user  system elapsed 
-    ## 270.120  18.336 268.444
+    ## 268.396  19.116 264.604
 
 Performance is system-dependent and even increasing cores may not result in huge gains in time. Performance is a trade-off between cores, forked threads, blocksize, and the number of terms in each model.
 
@@ -920,7 +920,7 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
 ```
 
     ##    user  system elapsed 
-    ## 591.884  26.208 299.300
+    ## 591.356  26.832 295.817
 
 2. Modify confidence intervals
 ------------------------------
@@ -959,30 +959,30 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     conflevel = 99)
 ```
 
-    ##       Variable         Term       Beta StandardError         Z        P
-    ##    1:    gene1        gene1  0.0241627     0.0779904  0.309816 0.756701
-    ##    2:    gene1 cellB:dosage  0.8955743     1.3054627  0.686021 0.492700
-    ##    3:    gene1 cellT:dosage  0.0646979     0.3344348  0.193454 0.846603
-    ##    4:    gene2        gene2 -0.0577311     0.0757272 -0.762357 0.445847
-    ##    5:    gene2 cellB:dosage  1.1942387     1.2980785  0.920005 0.357570
-    ##   ---                                                                  
-    ## 1487:  gene496 cellB:dosage  1.0189701     1.3262617  0.768302 0.442308
-    ## 1488:  gene496 cellT:dosage  0.0659973     0.3379862  0.195266 0.845184
-    ## 1489:  gene497      gene497 -0.0132620     0.0324493 -0.408699 0.682761
-    ## 1490:  gene497 cellB:dosage  0.8432091     1.3371647  0.630595 0.528306
-    ## 1491:  gene497 cellT:dosage  0.0444394     0.3349245  0.132685 0.894443
-    ##             OR   ORlower  ORupper
-    ##    1: 1.024457 0.8380084  1.25239
-    ##    2: 2.448742 0.0848327 70.68429
-    ##    3: 1.066837 0.4507921  2.52476
-    ##    4: 0.943904 0.7766299  1.14721
-    ##    5: 3.301044 0.1165552 93.49121
-    ##   ---                            
-    ## 1487: 2.770340 0.0909674 84.36848
-    ## 1488: 1.068224 0.4472680  2.55127
-    ## 1489: 0.986826 0.9076960  1.07285
-    ## 1490: 2.323812 0.0741920 72.78553
-    ## 1491: 1.045442 0.4411947  2.47725
+    ##       Variable         Term        Beta StandardError          Z        P
+    ##    1:    gene1        gene1 -0.01636711     0.0356278 -0.4593916 0.645953
+    ##    2:    gene1 cellB:dosage -0.01511190     0.6402399 -0.0236035 0.981169
+    ##    3:    gene1 cellT:dosage -0.17592524     0.5132556 -0.3427634 0.731776
+    ##    4:    gene2        gene2  0.02859184     0.0485133  0.5893615 0.555619
+    ##    5:    gene2 cellB:dosage  0.01296472     0.6278141  0.0206506 0.983524
+    ##   ---                                                                    
+    ## 1487:  gene496 cellB:dosage -0.01312199     0.6370979 -0.0205965 0.983568
+    ## 1488:  gene496 cellT:dosage -0.17169187     0.5127678 -0.3348336 0.737751
+    ## 1489:  gene497      gene497 -0.00583664     0.0524223 -0.1113390 0.911348
+    ## 1490:  gene497 cellB:dosage  0.02066911     0.6659569  0.0310367 0.975240
+    ## 1491:  gene497 cellT:dosage -0.14715125     0.5096547 -0.2887273 0.772790
+    ##             OR  ORlower ORupper
+    ##    1: 0.983766 0.897504 1.07832
+    ##    2: 0.985002 0.189331 5.12452
+    ##    3: 0.838681 0.223580 3.14601
+    ##    4: 1.029005 0.908128 1.16597
+    ##    5: 1.013049 0.201055 5.10442
+    ##   ---                          
+    ## 1487: 0.986964 0.191249 5.09334
+    ## 1488: 0.842239 0.224811 3.15538
+    ## 1489: 0.994180 0.868604 1.13791
+    ## 1490: 1.020884 0.183650 5.67494
+    ## 1491: 0.863163 0.232251 3.20795
 
 ``` r
   # 95% confidfence intervals (default)
@@ -1015,30 +1015,30 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     conflevel = 95)
 ```
 
-    ##       Variable         Term       Beta StandardError         Z        P
-    ##    1:    gene1        gene1  0.0241627     0.0779904  0.309816 0.756701
-    ##    2:    gene1 cellB:dosage  0.8955743     1.3054627  0.686021 0.492700
-    ##    3:    gene1 cellT:dosage  0.0646979     0.3344348  0.193454 0.846603
-    ##    4:    gene2        gene2 -0.0577311     0.0757272 -0.762357 0.445847
-    ##    5:    gene2 cellB:dosage  1.1942387     1.2980785  0.920005 0.357570
-    ##   ---                                                                  
-    ## 1487:  gene496 cellB:dosage  1.0189701     1.3262617  0.768302 0.442308
-    ## 1488:  gene496 cellT:dosage  0.0659973     0.3379862  0.195266 0.845184
-    ## 1489:  gene497      gene497 -0.0132620     0.0324493 -0.408699 0.682761
-    ## 1490:  gene497 cellB:dosage  0.8432091     1.3371647  0.630595 0.528306
-    ## 1491:  gene497 cellT:dosage  0.0444394     0.3349245  0.132685 0.894443
-    ##             OR  ORlower  ORupper
-    ##    1: 1.024457 0.879242  1.19366
-    ##    2: 2.448742 0.189553 31.63405
-    ##    3: 1.066837 0.553894  2.05480
-    ##    4: 0.943904 0.813708  1.09493
-    ##    5: 3.301044 0.259254 42.03177
-    ##   ---                           
-    ## 1487: 2.770340 0.205881 37.27770
-    ## 1488: 1.068224 0.550767  2.07184
-    ## 1489: 0.986826 0.926018  1.05163
-    ## 1490: 2.323812 0.169046 31.94462
-    ## 1491: 1.045442 0.542265  2.01552
+    ##       Variable         Term        Beta StandardError          Z        P
+    ##    1:    gene1        gene1 -0.01636711     0.0356278 -0.4593916 0.645953
+    ##    2:    gene1 cellB:dosage -0.01511190     0.6402399 -0.0236035 0.981169
+    ##    3:    gene1 cellT:dosage -0.17592524     0.5132556 -0.3427634 0.731776
+    ##    4:    gene2        gene2  0.02859184     0.0485133  0.5893615 0.555619
+    ##    5:    gene2 cellB:dosage  0.01296472     0.6278141  0.0206506 0.983524
+    ##   ---                                                                    
+    ## 1487:  gene496 cellB:dosage -0.01312199     0.6370979 -0.0205965 0.983568
+    ## 1488:  gene496 cellT:dosage -0.17169187     0.5127678 -0.3348336 0.737751
+    ## 1489:  gene497      gene497 -0.00583664     0.0524223 -0.1113390 0.911348
+    ## 1490:  gene497 cellB:dosage  0.02066911     0.6659569  0.0310367 0.975240
+    ## 1491:  gene497 cellT:dosage -0.14715125     0.5096547 -0.2887273 0.772790
+    ##             OR  ORlower ORupper
+    ##    1: 0.983766 0.917414 1.05492
+    ##    2: 0.985002 0.280843 3.45470
+    ##    3: 0.838681 0.306699 2.29340
+    ##    4: 1.029005 0.935670 1.13165
+    ##    5: 1.013049 0.295961 3.46758
+    ##   ---                          
+    ## 1487: 0.986964 0.283141 3.44033
+    ## 1488: 0.842239 0.308295 2.30093
+    ## 1489: 0.994180 0.897105 1.10176
+    ## 1490: 1.020884 0.276766 3.76565
+    ## 1491: 0.863163 0.317888 2.34375
 
 3. Remove some terms from output / include the intercept
 --------------------------------------------------------
@@ -1078,30 +1078,30 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     excludeIntercept = FALSE)
 ```
 
-    ##      Variable        Term        Beta StandardError          Z        P
-    ##   1:    gene1 (Intercept) -0.49022284     0.9205539 -0.5325303 0.594359
-    ##   2:    gene1       gene1  0.02416270     0.0779904  0.3098165 0.756701
-    ##   3:    gene2 (Intercept)  0.02900892     0.7851877  0.0369452 0.970529
-    ##   4:    gene2       gene2 -0.05773111     0.0757272 -0.7623566 0.445847
-    ##   5:    gene3 (Intercept)  0.08871543     1.4066462  0.0630688 0.949712
-    ##  ---                                                                   
-    ## 990:  gene495     gene495  0.00951163     0.0546118  0.1741681 0.861733
-    ## 991:  gene496 (Intercept) -0.21245324     0.8047794 -0.2639894 0.791788
-    ## 992:  gene496     gene496 -0.00967561     0.0536130 -0.1804715 0.856782
-    ## 993:  gene497 (Intercept) -0.11404528     0.7902150 -0.1443218 0.885246
-    ## 994:  gene497     gene497 -0.01326198     0.0324493 -0.4086991 0.682761
-    ##            OR   ORlower  ORupper
-    ##   1: 0.612490 0.1008143  3.72114
-    ##   2: 1.024457 0.8792416  1.19366
-    ##   3: 1.029434 0.2209253  4.79680
-    ##   4: 0.943904 0.8137080  1.09493
-    ##   5: 1.092770 0.0693728 17.21346
-    ##  ---                            
-    ## 990: 1.009557 0.9070792  1.12361
-    ## 991: 0.808598 0.1669949  3.91527
-    ## 992: 0.990371 0.8915845  1.10010
-    ## 993: 0.892218 0.1896001  4.19859
-    ## 994: 0.986826 0.9260182  1.05163
+    ##      Variable        Term        Beta StandardError         Z        P
+    ##   1:    gene1 (Intercept)  0.33687797     0.8675961  0.388289 0.697802
+    ##   2:    gene1       gene1 -0.01636711     0.0356278 -0.459392 0.645953
+    ##   3:    gene2 (Intercept) -0.13502157     0.7343975 -0.183854 0.854128
+    ##   4:    gene2       gene2  0.02859184     0.0485133  0.589362 0.555619
+    ##   5:    gene3 (Intercept)  0.28595250     0.7801921  0.366516 0.713980
+    ##  ---                                                                  
+    ## 990:  gene495     gene495 -0.09005281     0.0616875 -1.459822 0.144339
+    ## 991:  gene496 (Intercept)  0.34041663     0.8675696  0.392380 0.694778
+    ## 992:  gene496     gene496 -0.02820564     0.0606854 -0.464784 0.642086
+    ## 993:  gene497 (Intercept)  0.13271550     0.8418040  0.157656 0.874728
+    ## 994:  gene497     gene497 -0.00583664     0.0524223 -0.111339 0.911348
+    ##            OR  ORlower ORupper
+    ##   1: 1.400568 0.255744 7.67014
+    ##   2: 0.983766 0.917414 1.05492
+    ##   3: 0.873697 0.207129 3.68537
+    ##   4: 1.029005 0.935670 1.13165
+    ##   5: 1.331029 0.288461 6.14170
+    ##  ---                          
+    ## 990: 0.913883 0.809808 1.03133
+    ## 991: 1.405533 0.256664 7.69693
+    ## 992: 0.972188 0.863167 1.09498
+    ## 993: 1.141925 0.219327 5.94542
+    ## 994: 0.994180 0.897105 1.10176
 
 ``` r
   # remove everything but the variable being tested
@@ -1139,29 +1139,29 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
 ```
 
     ##      Variable    Term        Beta StandardError         Z        P
-    ##   1:    gene1   gene1  0.02416270     0.0779904  0.309816 0.756701
-    ##   2:    gene2   gene2 -0.05773111     0.0757272 -0.762357 0.445847
-    ##   3:    gene3   gene3 -0.02409888     0.0781838 -0.308234 0.757905
-    ##   4:    gene4   gene4 -0.04126785     0.0623542 -0.661830 0.508080
-    ##   5:    gene5   gene5 -0.04391181     0.0520601 -0.843484 0.398958
+    ##   1:    gene1   gene1 -0.01636711     0.0356278 -0.459392 0.645953
+    ##   2:    gene2   gene2  0.02859184     0.0485133  0.589362 0.555619
+    ##   3:    gene3   gene3 -0.01973429     0.0406255 -0.485762 0.627136
+    ##   4:    gene4   gene4  0.03062975     0.0484916  0.631651 0.527615
+    ##   5:    gene5   gene5  0.03033100     0.0469003  0.646713 0.517818
     ##  ---                                                              
-    ## 493:  gene493 gene493  0.05909546     0.0579136  1.020408 0.307535
-    ## 494:  gene494 gene494  0.04295772     0.0671289  0.639929 0.522219
-    ## 495:  gene495 gene495  0.00951163     0.0546118  0.174168 0.861733
-    ## 496:  gene496 gene496 -0.00967561     0.0536130 -0.180472 0.856782
-    ## 497:  gene497 gene497 -0.01326198     0.0324493 -0.408699 0.682761
+    ## 493:  gene493 gene493 -0.10801137     0.0787265 -1.371983 0.170069
+    ## 494:  gene494 gene494  0.02953904     0.0284684  1.037606 0.299453
+    ## 495:  gene495 gene495 -0.09005281     0.0616875 -1.459822 0.144339
+    ## 496:  gene496 gene496 -0.02820564     0.0606854 -0.464784 0.642086
+    ## 497:  gene497 gene497 -0.00583664     0.0524223 -0.111339 0.911348
     ##            OR  ORlower ORupper
-    ##   1: 1.024457 0.879242 1.19366
-    ##   2: 0.943904 0.813708 1.09493
-    ##   3: 0.976189 0.837498 1.13785
-    ##   4: 0.959572 0.849184 1.08431
-    ##   5: 0.957038 0.864203 1.05985
+    ##   1: 0.983766 0.917414 1.05492
+    ##   2: 1.029005 0.935670 1.13165
+    ##   3: 0.980459 0.905418 1.06172
+    ##   4: 1.031104 0.937619 1.13391
+    ##   5: 1.030796 0.940267 1.13004
     ##  ---                          
-    ## 493: 1.060877 0.947041 1.18840
-    ## 494: 1.043894 0.915200 1.19068
-    ## 495: 1.009557 0.907079 1.12361
-    ## 496: 0.990371 0.891585 1.10010
-    ## 497: 0.986826 0.926018 1.05163
+    ## 493: 0.897617 0.769271 1.04738
+    ## 494: 1.029980 0.974084 1.08908
+    ## 495: 0.913883 0.809808 1.03133
+    ## 496: 0.972188 0.863167 1.09498
+    ## 497: 0.994180 0.897105 1.10176
 
 Acknowledgments
 ===============

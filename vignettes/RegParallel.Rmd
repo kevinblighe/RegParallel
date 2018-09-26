@@ -697,7 +697,7 @@ enabled, a total of  2 x 2 = 4 threads will be used.
 
 Focusing on the elapsed time (as system time only reports time from the last
 core that finished), we can see that nested processing has negligible
-improvementct or may actually be slower under certain conditions when tested
+improvement or may actually be slower under certain conditions when tested
 over a small number of variables. This is likely due to the system being
 slowed by simply managing the larger number of threads. Nested processing's
 benefits can only be gained when processing a large number of variables:

@@ -223,7 +223,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   variables <- colnames(data)[4:ncol(data)]
   res5 <- RegParallel(
     data = data,
-    formula = 'as.integer(group) ~ [*] * strata(cell) + dosage',
+    formula = 'as.integer(factor(group)) ~ [*] * strata(cell) + dosage',
     FUN = function(formula, data)
       clogit(formula = formula,
         data = data,
@@ -240,12 +240,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   )
 
   # spot checks
-  m <- clogit(formula = as.integer(group) ~ gene145 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
+  m <- clogit(formula = as.integer(factor(group)) ~ gene145 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.5)))
   res5[which(res5$Variable == 'gene145'),]
 
-  m <- clogit(formula = as.integer(group) ~ gene34 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
+  m <- clogit(formula = as.integer(factor(group)) ~ gene34 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.5)))
   res5[which(res5$Variable == 'gene34'),]
@@ -258,7 +258,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   variables <- colnames(data)[4:ncol(data)]
   res6 <- RegParallel(
     data = data,
-    formula = 'as.numeric(cell) ~ [*]:dosage',
+    formula = 'as.numeric(factor(cell)) ~ [*]:dosage',
     FUN = function(formula, data)
       bayesglm(formula = formula,
         data = data,
@@ -274,12 +274,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   )
 
   # spot checks
-  m <- bayesglm(formula = as.numeric(cell) ~ gene1645:dosage, data = data, prior.mean = 2)
+  m <- bayesglm(formula = as.numeric(factor(cell)) ~ gene1645:dosage, data = data, prior.mean = 2)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.99)))
   res6[which(res6$Variable == 'gene1645'),]
 
-  m <- bayesglm(formula = as.numeric(cell) ~ gene3664:dosage, data = data, prior.mean = 2)
+  m <- bayesglm(formula = as.numeric(factor(cell)) ~ gene3664:dosage, data = data, prior.mean = 2)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.99)))
   res6[which(res6$Variable == 'gene3664'),]
@@ -293,7 +293,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   variables <- colnames(data)[4:ncol(data)]
   res7 <- RegParallel(
     data = data,
-    formula = 'as.integer(cell) ~ [*] + group * dosage',
+    formula = 'as.numeric(factor(cell)) ~ [*] + group * dosage',
     FUN = function(formula, data)
       glm.nb(formula = formula,
         data = data),
@@ -308,12 +308,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   )
 
   # spot checks
-  m <- glm.nb(formula = as.integer(cell) ~ gene99 + group * dosage, data = data)
+  m <- glm.nb(formula = as.numeric(factor(cell)) ~ gene99 + group * dosage, data = data)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.95)))
   res7[which(res7$Variable == 'gene99'),]
 
-  m <- glm.nb(formula = as.integer(cell) ~ gene2000 + group * dosage, data = data)
+  m <- glm.nb(formula = as.numeric(factor(cell)) ~ gene2000 + group * dosage, data = data)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.95)))
   res7[which(res7$Variable == 'gene2000'),]

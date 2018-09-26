@@ -193,6 +193,7 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 ```
 
 
+
 ## 3. Perform the most basic negative binomial logistic regression analysis.
 
 Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged
@@ -225,6 +226,11 @@ distribution. <i>glm.nbParallel</i> will be used.
 
 ```
 
+```{r, echo=FALSE}
+
+  rm(dds, nbdata, nbcounts, rlogdata, rlogcounts, data, airway)
+
+```
 
 ## 4. Survival analysis via Cox Proportional Hazards regression.
 
@@ -351,7 +357,7 @@ We now take the top probes from the model by Log Rank p-value and use
 
   library(biomaRt)
 
-  mart <- useMart('ENSEMBL_MART_ENSEMBL')
+  mart <- useMart('ENSEMBL_MART_ENSEMBL', host='useast.ensembl.org')
 
   mart <- useDataset("hsapiens_gene_ensembl", mart)
 
@@ -550,6 +556,13 @@ Oestrogen receptor (<i>ESR1</i>) comes out top - makes sense! Also, although
 204667_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>,
 which also makes sense in relation to oestrogen signalling.
 
+
+```{r, echo=FALSE}
+
+  rm(coxdata, data, x, gset, survplotdata, highExpr, lowExpr,
+    annotLookup, mart, final, probes, idx)
+
+```
 
 # Advanced features.
 

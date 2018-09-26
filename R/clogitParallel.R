@@ -363,8 +363,8 @@ clogitParallel <- function(
         } 
       } else if (nestedParallel == FALSE) {
         models <- lapply(
-formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
-function(f) summary(FUN(formula = f, data = df)))
+          formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
+          function(f) summary(FUN(formula = f, data = df)))
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }

@@ -267,7 +267,7 @@ glm.nbParallel <- function(
           function(x) data.frame(models[[x]]['coefficients']))
       }
 
-      names(wObjects) <- variables[1:(blocksize*l)]
+      names(wObjects) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
       # further processing
       if (system == 'Windows') {
@@ -456,7 +456,7 @@ glm.nbParallel <- function(
           function(x) data.frame(models[[x]]['coefficients']))
       }
 
-      names(wObjects) <- variables[1:(blocksize*l)]
+      names(wObjects) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
       # further processing
       if (system == 'Windows') {

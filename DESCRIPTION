@@ -15,7 +15,8 @@ Depends:
   arm,
   MASS,
   stats,
-  utils
+  utils,
+  methods
 Imports:
 Suggests:
   RUnit,

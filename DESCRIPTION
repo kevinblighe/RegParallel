@@ -8,15 +8,14 @@ Description: In many analyses, a large amount of variables have to be tested ind
 License: GPL-3
 Depends:
   R (>= 3.5.0),
-  BiocParallel,
-  foreach,
-  parallel,
   doParallel,
   data.table,
   stringr,
   survival,
   arm,
-  MASS
+  MASS,
+  stats,
+  utils
 Imports:
 Suggests:
   RUnit,

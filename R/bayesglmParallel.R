@@ -181,7 +181,7 @@ bayesglmParallel <- function(
       # then this is the first and final block;
       # thus, we must free the cluster
       if ((blocks == 1) && (system == 'Windows')) {
-        stopCluster(cl)
+        stopCluster(cluster)
       }
 
       return(wObjects)
@@ -345,7 +345,7 @@ bayesglmParallel <- function(
 
       # final block. If Windows system, disable access to grabbed cluster
       if (system == 'Windows') {
-        stopCluster(cl)
+        stopCluster(cluster)
       }
 
       return(wObjects)

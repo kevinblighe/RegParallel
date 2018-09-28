@@ -1,6 +1,6 @@
 Package: RegParallel
 Type: Package
-Title: Standard regression functions in R enabled for parallel processing over large data-frames.
+Title: Standard regression functions in R enabled for parallel processing over large data-frames
 Version: 0.99.0
 Author: Kevin Blighe
 Maintainer: Kevin Blighe <kevin@clinicalbioinformatics.co.uk>

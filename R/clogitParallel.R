@@ -16,6 +16,8 @@ clogitParallel <- function(
 
   ExpBeta <- l <- NULL
 
+  # loop through and process each block of variants
+  # with foreach, this loop is parallelised
   foreach(l = 1:blocks,
     .combine = rbind,
     .multicombine = TRUE,
@@ -30,10 +32,16 @@ clogitParallel <- function(
         ' formulae, batch ', l, ' of ', blocks, sep=''))
       message(paste('-- index1: 1; ', 'index2: ', (blocksize*l), sep=''))
 
+      # subset the data to only include variants that will be
+      # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
         startIndex + (1:(blocksize*l)))]
 
+      # if nestedParallel is TRUE, parLapply (Windows) or
+      # mclapply (linux/mac) will be used to process the variables;
+      # thus, adding an additional layer of parallelisation.
+      # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
             models <- parLapply(cluster, formula.list[1:(blocksize*l)],
@@ -48,7 +56,6 @@ clogitParallel <- function(
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }
-
       names(models) <- variables[1:(blocksize*l)]
 
       # detect failed models (return 'try' error)
@@ -65,7 +72,11 @@ clogitParallel <- function(
           'cetera.', sep=''))
       }
 
-      # extract coefficients and convert to data-frame
+      # for coxph, clogit, and glm.nb, we have to extract 2 types of
+      # information from the models:
+      #   data at level of coefficients
+      #   data at level of model
+      # Here, extract coefficients
       if (system == 'Windows') {
         wObjects <- parLapply(cluster, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
@@ -73,10 +84,10 @@ clogitParallel <- function(
         wObjects <- mclapply(names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       }
-
       names(wObjects) <- variables[1:(blocksize*l)]
 
-      # further processing
+      # further processing on coefficient data (form into a dataframe) as
+      # per glm, lm, bayesglm
       if (system == 'Windows') {
         wObjects <- parLapply(cluster, names(wObjects),
           function(x) data.frame(
@@ -93,7 +104,7 @@ clogitParallel <- function(
             row.names=rownames(wObjects[[x]])))
       }
 
-      # extract p values specific to coxph
+      # extract model-level data
       if (system == 'Windows') {
         p <- parLapply(cluster, names(models),
           function(x) data.frame(
@@ -144,6 +155,7 @@ clogitParallel <- function(
       colnames(wObjects) <- c('Variable', 'Term', 'Beta', 'ExpBeta',
         'StandardError', 'Z', 'P', 'LRT', 'Wald', 'LogRank')
 
+      # sort out final data to return
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(
@@ -188,10 +200,16 @@ clogitParallel <- function(
       message(paste('-- index1: ', (1+(blocksize*(l-1))), '; ',
         'index2: ', length(formula.list), sep=''))
 
+      # subset the data to only include variants that will be
+      # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
         startIndex + (((1+(blocksize*(l-1)))):(length(formula.list))))]
 
+      # if nestedParallel is TRUE, parLapply (Windows) or
+      # mclapply (linux/mac) will be used to process the variables;
+      # thus, adding an additional layer of parallelisation.
+      # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
           models <- parLapply(cluster,
@@ -209,7 +227,6 @@ clogitParallel <- function(
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }
-
       names(models) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
       # detect failed models (return 'try' error)
@@ -226,7 +243,11 @@ clogitParallel <- function(
           'cetera.', sep=''))
       }
 
-      # extract coefficients and convert to data-frame
+      # for coxph, clogit, and glm.nb, we have to extract 2 types of
+      # information from the models:
+      #   data at level of coefficients
+      #   data at level of model
+      # Here, extract coefficients
       if (system == 'Windows') {
         wObjects <- parLapply(cluster, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
@@ -234,10 +255,10 @@ clogitParallel <- function(
         wObjects <- mclapply(names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       }
-
       names(wObjects) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
-      # further processing
+      # further processing on coefficient data (form into a dataframe) as
+      # per glm, lm, bayesglm
       if (system == 'Windows') {
         wObjects <- parLapply(cluster, names(wObjects),
           function(x) data.frame(
@@ -254,7 +275,7 @@ clogitParallel <- function(
             row.names=rownames(wObjects[[x]])))
       }
 
-      # extract p values specific to clogit
+      # extract model-level data
       if (system == 'Windows') {
         p <- parLapply(cluster, names(models),
           function(x) data.frame(
@@ -305,6 +326,7 @@ clogitParallel <- function(
       colnames(wObjects) <- c('Variable', 'Term', 'Beta', 'ExpBeta',
         'StandardError', 'Z', 'P', 'LRT', 'Wald', 'LogRank')
 
+      # sort out final data to return
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(
@@ -347,10 +369,16 @@ clogitParallel <- function(
       message(paste('-- index1: ', (1+(blocksize*(l-1))), '; ',
         'index2: ', (blocksize*l), sep=''))
 
+      # subset the data to only include variants that will be
+      # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
         startIndex + ((1+(blocksize*(l-1))):(blocksize*l)))]
 
+      # if nestedParallel is TRUE, parLapply (Windows) or
+      # mclapply (linux/mac) will be used to process the variables;
+      # thus, adding an additional layer of parallelisation.
+      # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
           models <- parLapply(cluster,
@@ -368,7 +396,6 @@ clogitParallel <- function(
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }
-
       names(models) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
       # detect failed models (return 'try' error)
@@ -385,7 +412,11 @@ clogitParallel <- function(
           'cetera.', sep=''))
       }
 
-      # extract coefficients and convert to data-frame
+      # for coxph, clogit, and glm.nb, we have to extract 2 types of
+      # information from the models:
+      #   data at level of coefficients
+      #   data at level of model
+      # Here, extract coefficients
       if (system == 'Windows') {
         wObjects <- parLapply(cluster, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
@@ -393,10 +424,10 @@ clogitParallel <- function(
         wObjects <- mclapply(names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       }
-
       names(wObjects) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
-      # further processing
+      # further processing on coefficient data (form into a dataframe) as
+      # per glm, lm, bayesglm
       if (system == 'Windows') {
         wObjects <- parLapply(cluster, names(wObjects),
           function(x) data.frame(
@@ -413,7 +444,7 @@ clogitParallel <- function(
             row.names=rownames(wObjects[[x]])))
       }
 
-      # extract p values specific to clogit
+      # extract model-level data
       if (system == 'Windows') {
         p <- parLapply(cluster, names(models),
           function(x) data.frame(
@@ -464,6 +495,7 @@ clogitParallel <- function(
       colnames(wObjects) <- c('Variable', 'Term', 'Beta', 'ExpBeta',
         'StandardError', 'Z', 'P', 'LRT', 'Wald', 'LogRank')
 
+      # sort out final data to return
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(

@@ -17,6 +17,8 @@ lmParallel <- function(
 
   ExpBeta <- l <- NULL
 
+  # loop through and process each block of variants
+  # with foreach, this loop is parallelised
   foreach(l = 1:blocks,
     .combine = rbind,
     .multicombine = TRUE,
@@ -31,10 +33,16 @@ lmParallel <- function(
         ' formulae, batch ', l, ' of ', blocks, sep=''))
       message(paste('-- index1: 1; ', 'index2: ', (blocksize*l), sep=''))
 
+      # subset the data to only include variants that will be
+      # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
         startIndex + (1:(blocksize*l)))]
 
+      # if nestedParallel is TRUE, parLapply (Windows) or
+      # mclapply (linux/mac) will be used to process the variables;
+      # thus, adding an additional layer of parallelisation.
+      # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
             models <- parLapply(cl, formula.list[1:(blocksize*l)],
@@ -49,7 +57,6 @@ lmParallel <- function(
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }
-
       names(models) <- variables[1:(blocksize*l)]
 
       # detect failed models (return 'try' error)
@@ -135,6 +142,7 @@ lmParallel <- function(
       colnames(wObjects) <- c('Variable', 'Term', 'Beta',
         'StandardError', 't', 'P')
 
+      # sort out final data to return
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(
@@ -178,10 +186,16 @@ lmParallel <- function(
       message(paste('-- index1: ', (1+(blocksize*(l-1))), '; ',
         'index2: ', length(formula.list), sep=''))
 
+      # subset the data to only include variants that will be
+      # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
         startIndex + (((1+(blocksize*(l-1)))):(length(formula.list))))]
 
+      # if nestedParallel is TRUE, parLapply (Windows) or
+      # mclapply (linux/mac) will be used to process the variables;
+      # thus, adding an additional layer of parallelisation.
+      # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
           models <- parLapply(cl,
@@ -199,7 +213,6 @@ lmParallel <- function(
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }
-
       names(models) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
       # detect failed models (return 'try' error)
@@ -285,6 +298,7 @@ lmParallel <- function(
       colnames(wObjects) <- c('Variable', 'Term', 'Beta',
         'StandardError', 't', 'P')
 
+      # sort out final data to return
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(
@@ -326,10 +340,16 @@ lmParallel <- function(
       message(paste('-- index1: ', (1+(blocksize*(l-1))), '; ',
         'index2: ', (blocksize*l), sep=''))
 
+      # subset the data to only include variants that will be
+      # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
         startIndex + ((1+(blocksize*(l-1))):(blocksize*l)))]
 
+      # if nestedParallel is TRUE, parLapply (Windows) or
+      # mclapply (linux/mac) will be used to process the variables;
+      # thus, adding an additional layer of parallelisation.
+      # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
           models <- parLapply(cl,
@@ -347,7 +367,6 @@ lmParallel <- function(
       } else {
         stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
       }
-
       names(models) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
       # detect failed models (return 'try' error)
@@ -433,6 +452,7 @@ lmParallel <- function(
       colnames(wObjects) <- c('Variable', 'Term', 'Beta',
         'StandardError', 't', 'P')
 
+      # sort out final data to return
       wObjects$Variable <- as.character(wObjects$Variable)
       wObjects$Beta <- as.numeric(as.character(wObjects$Beta))
       wObjects$StandardError <- as.numeric(

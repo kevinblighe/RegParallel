@@ -1,8 +1,8 @@
 ---
-title: 'Standard regression functions in R enabled for parallel processing over large data-frames'
-author: 'Kevin Blighe'
-date: '`r Sys.Date()`'
-package: '`r packageVersion('RegParallel')`'
+title: "Standard regression functions in R enabled for parallel processing over large data-frames"
+author: "Kevin Blighe"
+date: "`r Sys.Date()`"
+package: "`r packageVersion('RegParallel')`"
 output:
   html_document:
     toc: true

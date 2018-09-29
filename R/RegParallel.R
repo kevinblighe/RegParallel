@@ -81,7 +81,7 @@ RegParallel <- function(
   # parsing the formula
     # substitute the [*] for a dummy variable and try to coerce to a formula
     f <- gsub('\\[\\*\\]', 'dummyvar', formula)
-    if (is(try(as.formula(f), silent = TRUE)) == 'try-error') {
+    if (is(try(as.formula(f), silent = TRUE), 'try-error')) {
       stop('The formula is invalid.')
     }
 

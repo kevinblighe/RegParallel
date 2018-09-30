@@ -17,7 +17,7 @@ coxphParallel(
   blocksize,
   blocks,
   system,
-  cluster,
+  cl,
   nestedParallel,
   conflevel,
   excludeTerms)
@@ -44,7 +44,7 @@ coxphParallel(
   REQUIRED.}
   \item{system}{The identified system on which the user is operating.
   REQUIRED.}
-  \item{cluster}{On Windows systems, the cluster object created by
+  \item{cl}{On Windows systems, the cluster object created by
   makeCluster() that enables parallelisation. On other systems, will be
   assigned NULL. REQUIRED.}
   \item{nestedParallel}{In RegParallel, parallelisation initially occurs at

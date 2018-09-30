@@ -60,7 +60,7 @@ RegParallel <- function(
   # If on Mac / Linux, they are registered via 'mc.cores'
   cl <- NULL
   if (system == 'Windows') {
-    cl <- makecl(getOption('cl.cores', cores))
+    cl <- makecluster(getOption('cl.cores', cores))
   } else {
     options('mc.cores' = cores)
   }

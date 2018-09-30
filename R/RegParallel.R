@@ -61,6 +61,8 @@ RegParallel <- function(
   cl <- NULL
   if (system == 'Windows') {
     cl <- makeCluster(getOption('cl.cores', cores))
+    registerDoSEQ()
+    on.exit(stopCluster(cl))
   } else {
     options('mc.cores' = cores)
   }
@@ -257,10 +259,9 @@ RegParallel <- function(
   message('Done!')
 
   # if Windows system, disable access to grabbed cl
-  if (system == 'Windows') {
-    stopcl(cl)
-    registerDoSEQ()
-  }
+  #if (system == 'Windows') {
+  #  stopcl(cl)
+  #}
 
   return(res)
 }

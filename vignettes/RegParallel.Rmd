@@ -40,7 +40,7 @@ regression, and negative binomial regression.
 
     library(knitr)
 
-    opts_chunk$set(tidy = TRUE, message = FALSE, warning = FALSE)
+    opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
 
 ```
 
@@ -110,7 +110,7 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 
 ```
 
-## 1. Perform the most basic logistic regression analysis.
+## Perform the most basic logistic regression analysis.
 
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>,
 with dexamethasone as the dependent variable.
@@ -139,7 +139,7 @@ with dexamethasone as the dependent variable.
 
 ```
 
-## 2. Perform a basic linear regression.
+## Perform a basic linear regression.
 
 Here, we will perform the linear regression using both <i>glmParallel</i> and
 <i>lmParallel</i>. We will appreciate that a linear regression is the same
@@ -194,7 +194,7 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 
 
 
-## 3. Perform the most basic negative binomial logistic regression analysis.
+## Perform the most basic negative binomial logistic regression analysis.
 
 Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged
 counts in RNA-seq naturally follow a negative binomial / Poisson-like
@@ -232,7 +232,7 @@ distribution. <i>glm.nbParallel</i> will be used.
 
 ```
 
-## 4. Survival analysis via Cox Proportional Hazards regression.
+## Survival analysis via Cox Proportional Hazards regression.
 
 For this example, we will load breast cancer gene expression data with
 recurrence free survival (RFS) from
@@ -471,7 +471,7 @@ Plot the survival curves and place Log Rank p-value in the plots:
 
 ```
 
-## 5. Perform a conditional logistic regression
+## Perform a conditional logistic regression
 
 In this example, we will re-use the Cox data for the purpose of performing
 conditional logistic regression with tumour grade as our grouping / matching

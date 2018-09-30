@@ -56,15 +56,13 @@ RegParallel <- function(
   }
 
   # if user is on Windows, cores / threads for certain functions have
-  # to be registered differently, as a 'cluster'.
+  # to be registered differently, as a 'cl'.
   # If on Mac / Linux, they are registered via 'mc.cores'
+  cl <- NULL
   if (system == 'Windows') {
-    cl <- makeCluster(getOption('cl.cores', cores))
+    cl <- makecl(getOption('cl.cores', cores))
   } else {
-    cl <- NULL
     options('mc.cores' = cores)
-
-    # registerDoMC(cores)
   }
 
   # register cores / threads for doParallel-related functions.
@@ -163,7 +161,7 @@ RegParallel <- function(
       blocksize = blocksize,
       blocks = blocks,
       system = system,
-      cluster = cl,
+      cl = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
@@ -179,7 +177,7 @@ RegParallel <- function(
       blocksize = blocksize,
       blocks = blocks,
       system = system,
-      cluster = cl,
+      cl = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
@@ -195,7 +193,7 @@ RegParallel <- function(
       blocksize = blocksize,
       blocks = blocks,
       system = system,
-      cluster = cl,
+      cl = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
       excludeTerms = excludeTerms)
@@ -210,7 +208,7 @@ RegParallel <- function(
       blocksize = blocksize,
       blocks = blocks,
       system = system,
-      cluster = cl,
+      cl = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
       excludeTerms = excludeTerms)
@@ -225,7 +223,7 @@ RegParallel <- function(
       blocksize = blocksize,
       blocks = blocks,
       system = system,
-      cluster = cl,
+      cl = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
@@ -241,7 +239,7 @@ RegParallel <- function(
       blocksize = blocksize,
       blocks = blocks,
       system = system,
-      cluster = cl,
+      cl = cl,
       nestedParallel = nestedParallel,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
@@ -257,6 +255,12 @@ RegParallel <- function(
   }
 
   message('Done!')
+
+  # if Windows system, disable access to grabbed cl
+  if (system == 'Windows') {
+    stopcl(cl)
+    registerDoSEQ()
+  }
 
   return(res)
 }

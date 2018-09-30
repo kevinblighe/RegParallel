@@ -8,7 +8,7 @@ glm.nbParallel <- function(
   blocksize,
   blocks,
   system,
-  cluster,
+  cl,
   nestedParallel,
   conflevel,
   excludeTerms,
@@ -23,9 +23,7 @@ glm.nbParallel <- function(
     .combine = rbind,
     .multicombine = TRUE,
     .inorder = FALSE,
-    .packages = c('data.table',
-      'doParallel', 'parallel',
-      'foreach', 'BiocParallel')) %dopar% {
+    .packages = c('data.table', 'doParallel', 'MASS')) %dopar% {
 
     # first block - will be executed just once
     if (l==1) {
@@ -45,7 +43,7 @@ glm.nbParallel <- function(
       # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
-            models <- parLapply(cluster, formula.list[1:(blocksize*l)],
+            models <- parLapply(cl, formula.list[1:(blocksize*l)],
               function(f) summary(FUN(formula = f, data = df)))
         } else {
             models <- mclapply(formula.list[1:(blocksize*l)],
@@ -79,7 +77,7 @@ glm.nbParallel <- function(
       #   data at level of model
       # Here, extract coefficients
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       } else {
         wObjects <- mclapply(names(models),
@@ -90,7 +88,7 @@ glm.nbParallel <- function(
       # further processing on coefficient data (form into a dataframe) as
       # per glm, lm, bayesglm
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(wObjects),
+        wObjects <- parLapply(cl, names(wObjects),
           function(x) data.frame(
             rep(x, length(rownames(wObjects[[x]]))),
             rownames(wObjects[[x]]),
@@ -107,7 +105,7 @@ glm.nbParallel <- function(
 
       # extract model-level data
       if (system == 'Windows') {
-        t <- parLapply(cluster, names(models),
+        t <- parLapply(cl, names(models),
           function(x) data.frame(
             models[[x]]$theta,
             models[[x]]$SE.theta,
@@ -127,7 +125,7 @@ glm.nbParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
               rownames(x),
@@ -141,7 +139,7 @@ glm.nbParallel <- function(
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               '\\(Intercept\\)',
               rownames(x),
@@ -155,7 +153,7 @@ glm.nbParallel <- function(
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -175,7 +173,7 @@ glm.nbParallel <- function(
       # duplicate them to fit alongside the respective model terms in the final data-table
       nterms <- nrow(wObjects[[1]])
       if (system == 'Windows') {
-        t <- parLapply(cluster, t, function(x) x[rep('extra', nterms),])
+        t <- parLapply(cl, t, function(x) x[rep('extra', nterms),])
       } else {
         t <- mclapply(t, function(x) x[rep('extra', nterms),])
       }
@@ -215,13 +213,6 @@ glm.nbParallel <- function(
       wObjects$ORupper[is.infinite(wObjects$ORupper)] <- NA
       wObjects$ORupper[wObjects$ORupper == 'NaN'] <- NA
 
-      # if on Windows and there's only 1 block,
-      # then this is the first and final block;
-      # thus, we must free the cluster
-      if ((blocks == 1) && (system == 'Windows')) {
-        stopCluster(cluster)
-      }
-
       return(wObjects)
     }
 
@@ -244,7 +235,7 @@ glm.nbParallel <- function(
       # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
-          models <- parLapply(cluster,
+          models <- parLapply(cl,
             formula.list[(1+(blocksize*(l-1))):length(formula.list)],
             function(f) summary(FUN(formula = f, data = df)))
         } else {
@@ -281,7 +272,7 @@ glm.nbParallel <- function(
       #   data at level of model
       # Here, extract coefficients
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       } else {
         wObjects <- mclapply(names(models),
@@ -292,7 +283,7 @@ glm.nbParallel <- function(
       # further processing on coefficient data (form into a dataframe) as
       # per glm, lm, bayesglm
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(wObjects),
+        wObjects <- parLapply(cl, names(wObjects),
           function(x) data.frame(
             rep(x, length(rownames(wObjects[[x]]))),
             rownames(wObjects[[x]]),
@@ -309,7 +300,7 @@ glm.nbParallel <- function(
 
       # extract model-level data
       if (system == 'Windows') {
-        t <- parLapply(cluster, names(models),
+        t <- parLapply(cl, names(models),
           function(x) data.frame(
             models[[x]]$theta,
             models[[x]]$SE.theta,
@@ -329,7 +320,7 @@ glm.nbParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
               rownames(x),
@@ -343,7 +334,7 @@ glm.nbParallel <- function(
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               '\\(Intercept\\)',
               rownames(x),
@@ -357,7 +348,7 @@ glm.nbParallel <- function(
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -377,7 +368,7 @@ glm.nbParallel <- function(
       # duplicate them to fit alongside the respective model terms in the final data-table
       nterms <- nrow(wObjects[[1]])
       if (system == 'Windows') {
-        t <- parLapply(cluster, t, function(x) x[rep('extra', nterms),])
+        t <- parLapply(cl, t, function(x) x[rep('extra', nterms),])
       } else {
         t <- mclapply(t, function(x) x[rep('extra', nterms),])
       }
@@ -417,11 +408,6 @@ glm.nbParallel <- function(
       wObjects$ORupper[is.infinite(wObjects$ORupper)] <- NA
       wObjects$ORupper[wObjects$ORupper == 'NaN'] <- NA
 
-      # final block. If Windows system, disable access to grabbed cluster
-      if (system == 'Windows') {
-        stopCluster(cluster)
-      }
-
       return(wObjects)
     }
 
@@ -444,7 +430,7 @@ glm.nbParallel <- function(
       # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
-          models <- parLapply(cluster,
+          models <- parLapply(cl,
             formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
             function(f) summary(FUN(formula = f, data = df)))
         } else {
@@ -481,7 +467,7 @@ glm.nbParallel <- function(
       #   data at level of model
       # Here, extract coefficients
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       } else {
         wObjects <- mclapply(names(models),
@@ -492,7 +478,7 @@ glm.nbParallel <- function(
       # further processing on coefficient data (form into a dataframe) as
       # per glm, lm, bayesglm
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(wObjects),
+        wObjects <- parLapply(cl, names(wObjects),
           function(x) data.frame(
             rep(x, length(rownames(wObjects[[x]]))),
             rownames(wObjects[[x]]),
@@ -509,7 +495,7 @@ glm.nbParallel <- function(
 
       # extract model-level data
       if (system == 'Windows') {
-        t <- parLapply(cluster, names(models),
+        t <- parLapply(cl, names(models),
           function(x) data.frame(
             models[[x]]$theta,
             models[[x]]$SE.theta,
@@ -529,7 +515,7 @@ glm.nbParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
               rownames(x),
@@ -543,7 +529,7 @@ glm.nbParallel <- function(
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               '\\(Intercept\\)',
               rownames(x),
@@ -557,7 +543,7 @@ glm.nbParallel <- function(
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -577,7 +563,7 @@ glm.nbParallel <- function(
       # duplicate them to fit alongside the respective model terms in the final data-table
       nterms <- nrow(wObjects[[1]])
       if (system == 'Windows') {
-        t <- parLapply(cluster, t, function(x) x[rep('extra', nterms),])
+        t <- parLapply(cl, t, function(x) x[rep('extra', nterms),])
       } else {
         t <- mclapply(t, function(x) x[rep('extra', nterms),])
       }

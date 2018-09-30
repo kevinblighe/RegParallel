@@ -8,7 +8,7 @@ coxphParallel <- function(
   blocksize,
   blocks,
   system,
-  cluster,
+  cl,
   nestedParallel,
   conflevel,
   excludeTerms)
@@ -22,9 +22,7 @@ coxphParallel <- function(
     .combine = rbind,
     .multicombine = TRUE,
     .inorder = FALSE,
-    .packages = c('data.table',
-      'doParallel', 'parallel',
-      'foreach', 'BiocParallel')) %dopar% {
+    .packages = c('data.table', 'doParallel', 'survival')) %dopar% {
 
     # first block - will be executed just once
     if (l==1) {
@@ -44,7 +42,7 @@ coxphParallel <- function(
       # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
-            models <- parLapply(cluster, formula.list[1:(blocksize*l)],
+            models <- parLapply(cl, formula.list[1:(blocksize*l)],
               function(f) summary(FUN(formula = f, data = df)))
         } else {
             models <- mclapply(formula.list[1:(blocksize*l)],
@@ -78,7 +76,7 @@ coxphParallel <- function(
       #   data at level of model
       # Here, extract coefficients
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       } else {
         wObjects <- mclapply(names(models),
@@ -89,7 +87,7 @@ coxphParallel <- function(
       # further processing on coefficient data (form into a dataframe) as
       # per glm, lm, bayesglm
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(wObjects),
+        wObjects <- parLapply(cl, names(wObjects),
           function(x) data.frame(
             rep(x, length(rownames(wObjects[[x]]))),
             rownames(wObjects[[x]]),
@@ -106,7 +104,7 @@ coxphParallel <- function(
 
       # extract model-level data
       if (system == 'Windows') {
-        p <- parLapply(cluster, names(models),
+        p <- parLapply(cl, names(models),
           function(x) data.frame(
             models[[x]]$logtest,
             models[[x]]$waldtest,
@@ -123,7 +121,7 @@ coxphParallel <- function(
       # Nota bene - intercept not relevant for Cox models
       if (!is.null(excludeTerms) ) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -143,7 +141,7 @@ coxphParallel <- function(
       # duplicate them to fit alongside the respective model terms in the final data-table
       nterms <- nrow(wObjects[[1]])
       if (system == 'Windows') {
-        p <- parLapply(cluster, p, function(x) x[rep('pvalue', nterms),])
+        p <- parLapply(cl, p, function(x) x[rep('pvalue', nterms),])
       } else {
         p <- mclapply(p, function(x) x[rep('pvalue', nterms),])
       }
@@ -183,13 +181,6 @@ coxphParallel <- function(
       wObjects$HRupper[is.infinite(wObjects$HRupper)] <- NA
       wObjects$HRupper[wObjects$HRupper == 'NaN'] <- NA
       
-      # if on Windows and there's only 1 block,
-      # then this is the first and final block;
-      # thus, we must free the cluster
-      if ((blocks == 1) && (system == 'Windows')) {
-        stopCluster(cluster)
-      }
-
       return(wObjects[,ExpBeta:=NULL])
     }
 
@@ -212,7 +203,7 @@ coxphParallel <- function(
       # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
-          models <- parLapply(cluster,
+          models <- parLapply(cl,
             formula.list[(1+(blocksize*(l-1))):length(formula.list)],
             function(f) summary(FUN(formula = f, data = df)))
         } else {
@@ -249,7 +240,7 @@ coxphParallel <- function(
       #   data at level of model
       # Here, extract coefficients
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       } else {
         wObjects <- mclapply(names(models),
@@ -260,7 +251,7 @@ coxphParallel <- function(
       # further processing on coefficient data (form into a dataframe) as
       # per glm, lm, bayesglm
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(wObjects),
+        wObjects <- parLapply(cl, names(wObjects),
           function(x) data.frame(
             rep(x, length(rownames(wObjects[[x]]))),
             rownames(wObjects[[x]]),
@@ -277,7 +268,7 @@ coxphParallel <- function(
 
       # extract model-level data
       if (system == 'Windows') {
-        p <- parLapply(cluster, names(models),
+        p <- parLapply(cl, names(models),
           function(x) data.frame(
             models[[x]]$logtest,
             models[[x]]$waldtest,
@@ -294,7 +285,7 @@ coxphParallel <- function(
       # Nota bene - intercept not relevant for Cox models
       if (!is.null(excludeTerms) ) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -314,7 +305,7 @@ coxphParallel <- function(
       # duplicate them to fit alongside the respective model terms in the final data-table
       nterms <- nrow(wObjects[[1]])
       if (system == 'Windows') {
-        p <- parLapply(cluster, p, function(x) x[rep('pvalue', nterms),])
+        p <- parLapply(cl, p, function(x) x[rep('pvalue', nterms),])
       } else {
         p <- mclapply(p, function(x) x[rep('pvalue', nterms),])
       }
@@ -354,11 +345,6 @@ coxphParallel <- function(
       wObjects$HRupper[is.infinite(wObjects$HRupper)] <- NA
       wObjects$HRupper[wObjects$HRupper == 'NaN'] <- NA
 
-      # final block. If Windows system, disable access to grabbed cluster
-      if (system == 'Windows') {
-        stopCluster(cluster)
-      }
-
       return(wObjects[,ExpBeta:=NULL])
     }
 
@@ -381,7 +367,7 @@ coxphParallel <- function(
       # if nestedParallel is FALSE< lapply is used
       if (nestedParallel == TRUE) {
         if (system == 'Windows') {
-          models <- parLapply(cluster,
+          models <- parLapply(cl,
             formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
             function(f) summary(FUN(formula = f, data = df)))
         } else {
@@ -418,7 +404,7 @@ coxphParallel <- function(
       #   data at level of model
       # Here, extract coefficients
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(models[[x]]['coefficients']))
       } else {
         wObjects <- mclapply(names(models),
@@ -429,7 +415,7 @@ coxphParallel <- function(
       # further processing on coefficient data (form into a dataframe) as
       # per glm, lm, bayesglm
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(wObjects),
+        wObjects <- parLapply(cl, names(wObjects),
           function(x) data.frame(
             rep(x, length(rownames(wObjects[[x]]))),
             rownames(wObjects[[x]]),
@@ -446,7 +432,7 @@ coxphParallel <- function(
 
       # extract model-level data
       if (system == 'Windows') {
-        p <- parLapply(cluster, names(models),
+        p <- parLapply(cl, names(models),
           function(x) data.frame(
             models[[x]]$logtest,
             models[[x]]$waldtest,
@@ -463,7 +449,7 @@ coxphParallel <- function(
       # Nota bene - intercept not relevant for Cox models
       if (!is.null(excludeTerms) ) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -483,7 +469,7 @@ coxphParallel <- function(
       # duplicate them to fit alongside the respective model terms in the final data-table
       nterms <- nrow(wObjects[[1]])
       if (system == 'Windows') {
-        p <- parLapply(cluster, p, function(x) x[rep('pvalue', nterms),])
+        p <- parLapply(cl, p, function(x) x[rep('pvalue', nterms),])
       } else {
         p <- mclapply(p, function(x) x[rep('pvalue', nterms),])
       }

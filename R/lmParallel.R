@@ -8,7 +8,7 @@ lmParallel <- function(
   blocksize,
   blocks,
   system,
-  cluster,
+  cl,
   nestedParallel,
   conflevel,
   excludeTerms,
@@ -23,9 +23,7 @@ lmParallel <- function(
     .combine = rbind,
     .multicombine = TRUE,
     .inorder = FALSE,
-    .packages = c('data.table',
-      'doParallel', 'parallel',
-      'foreach', 'BiocParallel')) %dopar% {
+    .packages = c('data.table', 'doParallel')) %dopar% {
 
     # first block - will be executed just once
     if (l==1) {
@@ -93,7 +91,7 @@ lmParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
               rownames(x),
@@ -107,7 +105,7 @@ lmParallel <- function(
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               '\\(Intercept\\)',
               rownames(x),
@@ -121,7 +119,7 @@ lmParallel <- function(
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -168,13 +166,6 @@ lmParallel <- function(
       wObjects$ORlower[wObjects$ORlower == 'NaN'] <- NA
       wObjects$ORupper[is.infinite(wObjects$ORupper)] <- NA
       wObjects$ORupper[wObjects$ORupper == 'NaN'] <- NA
-
-      # if on Windows and there's only 1 block,
-      # then this is the first and final block;
-      # thus, we must free the cluster
-      if ((blocks == 1) && (system == 'Windows')) {
-        stopCluster(cluster)
-      }
 
       return(wObjects)
     }
@@ -231,7 +222,7 @@ lmParallel <- function(
 
       # convert to data frames
       if (system == 'Windows') {
-        wObjects <- parLapply(cluster, names(models),
+        wObjects <- parLapply(cl, names(models),
           function(x) data.frame(
             rep(x, length(rownames(models[[x]]))),
             rownames(models[[x]]),
@@ -249,7 +240,7 @@ lmParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
               rownames(x),
@@ -263,7 +254,7 @@ lmParallel <- function(
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               '\\(Intercept\\)',
               rownames(x),
@@ -277,7 +268,7 @@ lmParallel <- function(
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),
@@ -324,11 +315,6 @@ lmParallel <- function(
       wObjects$ORlower[wObjects$ORlower == 'NaN'] <- NA
       wObjects$ORupper[is.infinite(wObjects$ORupper)] <- NA
       wObjects$ORupper[wObjects$ORupper == 'NaN'] <- NA
-
-      # final block. If Windows system, disable access to grabbed cluster
-      if (system == 'Windows') {
-        stopCluster(cluster)
-      }
 
       return(wObjects)
     }
@@ -403,7 +389,7 @@ lmParallel <- function(
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
               rownames(x),
@@ -417,7 +403,7 @@ lmParallel <- function(
         }
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               '\\(Intercept\\)',
               rownames(x),
@@ -431,7 +417,7 @@ lmParallel <- function(
         }
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
         if (system == 'Windows') {
-          wObjects <- parLapply(cluster, wObjects,
+          wObjects <- parLapply(cl, wObjects,
             function(x) x[grep(
               paste(c(excludeTerms), collapse='|'),
               rownames(x),

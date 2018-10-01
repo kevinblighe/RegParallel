@@ -965,7 +965,7 @@ contributions from:
 [Myles Lewis](https://www.qmul.ac.uk/whri/people/academic-staff/items/lewismyles.html),
 [Michael Barnes](https://www.qmul.ac.uk/whri/people/academic-staff/items/barnesmichael.html)
 
-Thanks also to Horacio Montenegro for testing.
+Thanks also to Horacio Montenegro and GenoMax for testing.
 
 # Session info
 

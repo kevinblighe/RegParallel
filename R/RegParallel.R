@@ -56,20 +56,20 @@ RegParallel <- function(
   }
 
   # if user is on Windows, cores / threads for certain functions have
-  # to be registered differently, as a 'cl'.
-  # If on Mac / Linux, they are registered via 'mc.cores'
+  # to be registered differently, i.e., as a cluster object that implements
+  # SNOW functionality.
+  # If on Mac / Linux, they are registered via 'mc.cores' and as a number of
+  # cores to registerDoParallel()
   cl <- NULL
   if (system == 'Windows') {
     cl <- makeCluster(getOption('cl.cores', cores))
+    registerDoParallel(cl)
     registerDoSEQ()
     on.exit(stopCluster(cl))
   } else {
     options('mc.cores' = cores)
+    registerDoParallel(cores)
   }
-
-  # register cores / threads for doParallel-related functions.
-  # works on all platforms
-  registerDoParallel(cores)
 
   # determine number of blocks
   blocks <- floor((length(variables)) / blocksize) + 1

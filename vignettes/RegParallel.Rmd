@@ -19,7 +19,7 @@ vignette: >
     %\usepackage[utf8]{inputenc}
 ---
 
-# Introduction.
+# Introduction
 
 In many analyses, a large amount of variables have to be tested independently
 against the trait/endpoint of interest, and also adjusted for covariates and
@@ -44,9 +44,9 @@ regression, and negative binomial regression.
 
 ```
 
-# Installation.
+# Installation
 
-## 1. Download the package from Bioconductor.
+## 1. Download the package from Bioconductor
 
 ```{r getPackage, eval=FALSE}
 
@@ -66,7 +66,7 @@ Note: to install development version:
 
 ```
 
-## 2. Load the package into R session.
+## 2. Load the package into R session
 
 ```{r Load, message=FALSE}
 
@@ -75,7 +75,7 @@ Note: to install development version:
 ```
 
 
-# Quick start.
+# Quick start
 
 For this quick start, we will follow the tutorial (from Section 3.1) of
 [RNA-seq workflow: gene-level exploratory analysis and differential expression](http://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html). Specifically, we will load the
@@ -110,7 +110,7 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 
 ```
 
-## Perform the most basic logistic regression analysis.
+## Perform the most basic logistic regression analysis
 
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>,
 with dexamethasone as the dependent variable.
@@ -139,7 +139,7 @@ with dexamethasone as the dependent variable.
 
 ```
 
-## Perform a basic linear regression.
+## Perform a basic linear regression
 
 Here, we will perform the linear regression using both <i>glmParallel</i> and
 <i>lmParallel</i>. We will appreciate that a linear regression is the same
@@ -194,7 +194,7 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 
 
 
-## Perform the most basic negative binomial logistic regression analysis.
+## Perform the most basic negative binomial logistic regression analysis
 
 Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged
 counts in RNA-seq naturally follow a negative binomial / Poisson-like
@@ -232,7 +232,7 @@ distribution. <i>glm.nbParallel</i> will be used.
 
 ```
 
-## Survival analysis via Cox Proportional Hazards regression.
+## Survival analysis via Cox Proportional Hazards regression
 
 For this example, we will load breast cancer gene expression data with
 recurrence free survival (RFS) from
@@ -564,14 +564,14 @@ which also makes sense in relation to oestrogen signalling.
 
 ```
 
-# Advanced features.
+# Advanced features
 
 Advanced features include the ability to modify block size, choose different
 numbers of cores, enable 'nested' parallel processing, modify limits for
 confidence intervals, and exclude certain model terms from output.
 
 
-## 1. Speed up processing
+## Speed up processing
 
 First create some test data for the purpose of benchmarking:
 
@@ -815,7 +815,7 @@ enabled, this translates to 9 simultaneous threads.
 
 ```
 
-## 2. Modify confidence intervals
+## Modify confidence intervals
 
 ```{r confint}
 
@@ -883,7 +883,7 @@ enabled, this translates to 9 simultaneous threads.
 ```
 
 
-## 3. Remove some terms from output / include the intercept
+## Remove some terms from output / include the intercept
 
 ```{r removeterms}
 

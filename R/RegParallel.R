@@ -11,14 +11,32 @@ RegParallel <- function(
   excludeTerms = NULL,
   excludeIntercept = TRUE)
 {
-  message(paste0('\n##############################\n#',
+  APPLYFUN <- NULL
+
+  message('\n##############################\n#',
     'RegParallel\n',
-    '##############################\n'))
+    '##############################\n')
 
   # detect system being used
   system <- Sys.info()['sysname']
   message('System is:')
   message('-- ', system)
+
+  # if nestedParallel is TRUE, parLapply (Windows) or
+  # mclapply (linux/mac) will be used to process the variables;
+  # thus, adding an additional layer of parallelisation.
+  # if nestedParallel is FALSE< lapply is used
+  if (nestedParallel == TRUE) {
+    if (system == 'Windows') {
+      APPLYFUN = function(...) parLapply(cl, ...)
+    } else {
+      APPLYFUN = function(...) mclapply(...)
+    }
+  } else if (nestedParallel == FALSE) {
+      APPLYFUN = function(...) lapply(...)
+  } else {
+      stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
+  }
 
   # blocksize
   blocksize <- round(blocksize, 0)
@@ -37,8 +55,8 @@ RegParallel <- function(
   # blocksize cannot be greater than number of variables to test
   # throw an error if so
   if (blocksize > length(variables)) {
-    stop(paste('blocksize is greater than number of variables to test.',
-      'Choose a smaller blocksize'),
+    stop('blocksize is greater than number of variables to test.',
+      'Choose a smaller blocksize',
       call. = FALSE)
   }
 
@@ -97,15 +115,15 @@ RegParallel <- function(
     }
 
     message('Terms included in model:')
-    for (i in 1:length(terms)) {
+    for (i in seq_len(length(terms))) {
       message('-- ', terms[i])
     }
 
     # check that terms are in the data
-    for (i in 1:length(terms)) {
+    for (i in seq_len(length(terms))) {
       if (!any(grepl(paste0('^', terms[i], '$'), colnames(data))) == TRUE) {
-        stop(paste('Error! - ', terms[i], ' not found. ',
-          'Check your model formula and data.', sep=''))
+        stop('Error! - ', terms[i], ' not found. ',
+          'Check your model formula and data.')
       }
     }
   #########
@@ -126,29 +144,29 @@ RegParallel <- function(
 
   # store each possible formula in the list
   formula.list <- list()
-  for (i in 1:length(variables)) {
+  for (i in seq_len(length(variables))) {
     formula.list[[i]] <- as.formula(gsub('\\[\\*\\]', variables[i], formula))
   }
 
   # dispaly first 5 formula
   five <- unlist(head(formula.list), 5)
   message("First 5 formulae:")
-  for (i in 1:5) {
+  for (i in seq_len(5)) {
     message('-- ', five[i])
   }
 
   # no Intercept term is returned for coxph or clogit
   # issue a message to user regarding this
   if ((excludeIntercept == FALSE) && (grepl('coxph|clogit', FUNtype) == TRUE)) {
-    message(paste0('Note: an intercept term will be generated for neither ',
+    message('Note: an intercept term will be generated for neither ',
       'Cox Proportional Hazards nor conditional logistic regression ',
-      'models.'))
+      'models.')
   }
 
   # detect if incorrect FUNtype selected
   if (!any((FUNtype %in% c('glm', 'lm', 'coxph', 'clogit', 'bayesglm', 'glm.nb')) == TRUE)) {
-    stop(paste0('FUNtype not recognised. Choose one of glm, lm, coxph, ',
-      'clogit, bayesglm, or glm.nb'))
+    stop('FUNtype not recognised. Choose one of glm, lm, coxph, ',
+      'clogit, bayesglm, or glm.nb')
   }
 
   # identify FUNtype and launch relevant function
@@ -162,9 +180,7 @@ RegParallel <- function(
       startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
-      system = system,
-      cl = cl,
-      nestedParallel = nestedParallel,
+      APPLYFUN = APPLYFUN,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
       excludeIntercept = excludeIntercept)
@@ -178,9 +194,7 @@ RegParallel <- function(
       startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
-      system = system,
-      cl = cl,
-      nestedParallel = nestedParallel,
+      APPLYFUN = APPLYFUN,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
       excludeIntercept = excludeIntercept)
@@ -194,9 +208,7 @@ RegParallel <- function(
       startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
-      system = system,
-      cl = cl,
-      nestedParallel = nestedParallel,
+      APPLYFUN = APPLYFUN,
       conflevel = conflevel,
       excludeTerms = excludeTerms)
   } else if (FUNtype == 'clogit') {
@@ -209,9 +221,7 @@ RegParallel <- function(
       startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
-      system = system,
-      cl = cl,
-      nestedParallel = nestedParallel,
+      APPLYFUN = APPLYFUN,
       conflevel = conflevel,
       excludeTerms = excludeTerms)
   } else if (FUNtype == 'bayesglm') {
@@ -224,9 +234,7 @@ RegParallel <- function(
       startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
-      system = system,
-      cl = cl,
-      nestedParallel = nestedParallel,
+      APPLYFUN = APPLYFUN,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
       excludeIntercept = excludeIntercept)
@@ -240,28 +248,22 @@ RegParallel <- function(
       startIndex = startIndex,
       blocksize = blocksize,
       blocks = blocks,
-      system = system,
-      cl = cl,
-      nestedParallel = nestedParallel,
+      APPLYFUN = APPLYFUN,
       conflevel = conflevel,
       excludeTerms = excludeTerms,
       excludeIntercept = excludeIntercept)
   }
 
   # a sanity / integrity check - this code should never be executed
-  # checks that all variables in results object are the same and are in the
-  # same order as they input.
+  # checks that all variables in results object are the same (and are in the
+  # same order) as the input variables.
   if (!all((unique(res$Variable) == variables) == TRUE)) {
-    stop(paste0('An unknown error has occurred. ',
-      'Please verify that adequate resources are available and retry'))
+    stop('An unknown error has occurred. ',
+      'Please report on Bioconductor support site: ',
+      'https://support.bioconductor.org/t/Latest/')
   }
 
   message('Done!')
-
-  # if Windows system, disable access to grabbed cl
-  #if (system == 'Windows') {
-  #  stopcl(cl)
-  #}
 
   return(res)
 }

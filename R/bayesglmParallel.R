@@ -7,9 +7,7 @@ bayesglmParallel <- function(
   startIndex,
   blocksize,
   blocks,
-  system,
-  cl,
-  nestedParallel,
+  APPLYFUN,
   conflevel,
   excludeTerms,
   excludeIntercept)
@@ -19,7 +17,7 @@ bayesglmParallel <- function(
 
   # loop through and process each block of variants
   # with foreach, this loop is parallelised
-  foreach(l = 1:blocks,
+  foreach(l = seq_len(blocks),
     .combine = rbind,
     .multicombine = TRUE,
     .inorder = FALSE,
@@ -27,35 +25,20 @@ bayesglmParallel <- function(
 
     # first block - will be executed just once
     if (l==1) {
-      message(paste('Processing ', blocksize,
-        ' formulae, batch ', l, ' of ', blocks, sep=''))
-      message(paste('-- index1: 1; ', 'index2: ', (blocksize*l), sep=''))
+      message('Processing ', blocksize,
+        ' formulae, batch ', l, ' of ', blocks)
+      message('-- index1: 1; ', 'index2: ', (blocksize*l))
 
       # subset the data to only include variants that will be
       # processsed in this block
       df <- data[,c(
         which(colnames(data) %in% terms),
-        startIndex + (1:(blocksize*l)))]
+        startIndex + (seq_len(blocksize*l)))]
 
-      # if nestedParallel is TRUE, parLapply (Windows) or
-      # mclapply (linux/mac) will be used to process the variables;
-      # thus, adding an additional layer of parallelisation.
-      # if nestedParallel is FALSE< lapply is used
-      if (nestedParallel == TRUE) {
-        if (system == 'Windows') {
-            models <- parLapply(cl, formula.list[1:(blocksize*l)],
-              function(f) summary(FUN(formula = f, data = df))$coefficients)
-        } else {
-            models <- mclapply(formula.list[1:(blocksize*l)],
-              function(f) summary(FUN(formula = f, data = df))$coefficients)
-        }
-      } else if (nestedParallel == FALSE) {
-        models <- lapply(formula.list[1:(blocksize*l)],
-          function(f) summary(FUN(formula = f, data = df))$coefficients)
-      } else {
-        stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
-      }
-      names(models) <- variables[1:(blocksize*l)]
+      # run the models
+      models <- APPLYFUN(formula.list[seq_len(blocksize*l)],
+        function(f) summary(FUN(formula = f, data = df))$coefficients)
+      names(models) <- variables[seq_len(blocksize*l)]
 
       # detect failed models (return 'try' error)
       nullindices <- c(
@@ -63,74 +46,41 @@ bayesglmParallel <- function(
       )
       if (length(nullindices) > 1) {
         print(models[[nullindices[1]]][1])
-        stop(paste('\nOne or more models have failed. ',
+        stop('\nOne or more models have failed. ',
           'Please recheck your data and model formula. ',
           'In particular, check that your variable names ',
           'are valid, i.e., no spaces, do not begin with ',
           'a number, no hyphens or other punctuation, et ',
-          'cetera.', sep=''))
+          'cetera.')
       }
 
       # convert to data frames
-      if (system == 'Windows') {
-        wObjects <- parLapply(cl, names(models),
-          function(x) data.frame(
-            rep(x, length(rownames(models[[x]]))),
-            rownames(models[[x]]),
-            models[[x]],
-            row.names=rownames(models[[x]])))
-      } else {
-        wObjects <- mclapply(names(models),
-          function(x) data.frame(
-            rep(x, length(rownames(models[[x]]))),
-            rownames(models[[x]]),
-            models[[x]],
-            row.names=rownames(models[[x]])))
-      }
+      wObjects <- APPLYFUN(names(models),
+        function(x) data.frame(
+          rep(x, length(rownames(models[[x]]))),
+          rownames(models[[x]]),
+          models[[x]],
+          row.names=rownames(models[[x]])))
 
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
+            rownames(x),
+            invert=TRUE),])
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              '\\(Intercept\\)',
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              '\\(Intercept\\)',
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            '\\(Intercept\\)',
+            rownames(x),
+            invert=TRUE),])
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              paste(c(excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              paste(c(excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            paste(c(excludeTerms), collapse='|'),
+            rownames(x),
+            invert=TRUE),])
       }
 
       #Convert the list into a data table
@@ -188,10 +138,9 @@ bayesglmParallel <- function(
 
     # final block - will be executed just once
     if (l==blocks) {
-      message(paste('Processing final batch ', l, ' of ',
-        blocks, sep=''))
-      message(paste('-- index1: ', (1+(blocksize*(l-1))), '; ',
-        'index2: ', length(formula.list), sep=''))
+      message('Processing final batch ', l, ' of ', blocks)
+      message('-- index1: ', (1+(blocksize*(l-1))), '; ',
+        'index2: ', length(formula.list))
 
       # subset the data to only include variants that will be
       # processsed in this block
@@ -199,27 +148,10 @@ bayesglmParallel <- function(
         which(colnames(data) %in% terms),
         startIndex + (((1+(blocksize*(l-1)))):(length(formula.list))))]
 
-      # if nestedParallel is TRUE, parLapply (Windows) or
-      # mclapply (linux/mac) will be used to process the variables;
-      # thus, adding an additional layer of parallelisation.
-      # if nestedParallel is FALSE< lapply is used
-      if (nestedParallel == TRUE) {
-        if (system == 'Windows') {
-          models <- parLapply(cl,
-            formula.list[(1+(blocksize*(l-1))):length(formula.list)],
-            function(f) summary(FUN(formula = f, data = df))$coefficients)
-        } else {
-          models <- mclapply(
-            formula.list[(1+(blocksize*(l-1))):length(formula.list)],
-            function(f) summary(FUN(formula = f, data = df))$coefficients)
-        }
-      } else if (nestedParallel == FALSE) {
-        models <- lapply(
-          formula.list[(1+(blocksize*(l-1))):length(formula.list)],
-          function(f) summary(FUN(formula = f, data = df))$coefficients)
-      } else {
-        stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
-      }
+      # run the models
+      models <- APPLYFUN(
+        formula.list[(1+(blocksize*(l-1))):length(formula.list)],
+        function(f) summary(FUN(formula = f, data = df))$coefficients)
       names(models) <- variables[(1+(blocksize*(l-1))):length(formula.list)]
 
       # detect failed models (return 'try' error)
@@ -228,74 +160,41 @@ bayesglmParallel <- function(
       )
       if (length(nullindices) > 1) {
         print(models[[nullindices[1]]][1])
-        stop(paste('\nOne or more models have failed. ',
+        stop('\nOne or more models have failed. ',
           'Please recheck your data and model formula. ',
           'In particular, check that your variable names ',
           'are valid, i.e., no spaces, do not begin with ',
           'a number, no hyphens or other punctuation, et ',
-          'cetera.', sep=''))
+          'cetera.')
       }
 
       # convert to data frames
-      if (system == 'Windows') {
-        wObjects <- parLapply(cl, names(models),
-          function(x) data.frame(
-            rep(x, length(rownames(models[[x]]))),
-            rownames(models[[x]]),
-            models[[x]],
-            row.names=rownames(models[[x]])))
-      } else {
-        wObjects <- mclapply(names(models),
-          function(x) data.frame(
-            rep(x, length(rownames(models[[x]]))),
-            rownames(models[[x]]),
-            models[[x]],
-            row.names=rownames(models[[x]])))
-      }
+      wObjects <- APPLYFUN(names(models),
+        function(x) data.frame(
+          rep(x, length(rownames(models[[x]]))),
+          rownames(models[[x]]),
+          models[[x]],
+          row.names=rownames(models[[x]])))
 
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
+            rownames(x),
+            invert=TRUE),])
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              '\\(Intercept\\)',
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              '\\(Intercept\\)',
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            '\\(Intercept\\)',
+            rownames(x),
+            invert=TRUE),])
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              paste(c(excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              paste(c(excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            paste(c(excludeTerms), collapse='|'),
+            rownames(x),
+            invert=TRUE),])
       }
 
       #Convert the list into a data table
@@ -353,10 +252,10 @@ bayesglmParallel <- function(
 
     # any other blocks - executed any number of times between first and final block
     if (l>1 && l<blocks) {
-      message(paste('Processing ', blocksize, ' formulae, batch ',
-        l, ' of ', blocks, sep=''))
-      message(paste('-- index1: ', (1+(blocksize*(l-1))), '; ',
-        'index2: ', (blocksize*l), sep=''))
+      message('Processing ', blocksize, ' formulae, batch ',
+        l, ' of ', blocks)
+      message('-- index1: ', (1+(blocksize*(l-1))), '; ',
+        'index2: ', (blocksize*l))
 
       # subset the data to only include variants that will be
       # processsed in this block
@@ -364,27 +263,10 @@ bayesglmParallel <- function(
         which(colnames(data) %in% terms),
         startIndex + ((1+(blocksize*(l-1))):(blocksize*l)))]
 
-      # if nestedParallel is TRUE, parLapply (Windows) or
-      # mclapply (linux/mac) will be used to process the variables;
-      # thus, adding an additional layer of parallelisation.
-      # if nestedParallel is FALSE< lapply is used
-      if (nestedParallel == TRUE) {
-        if (system == 'Windows') {
-          models <- parLapply(cl,
-            formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
-            function(f) summary(FUN(formula = f, data = df))$coefficients)
-        } else {
-          models <- mclapply(
-            formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
-            function(f) summary(FUN(formula = f, data = df))$coefficients)
-        } 
-      } else if (nestedParallel == FALSE) {
-        models <- lapply(
-          formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
-          function(f) summary(FUN(formula = f, data = df))$coefficients)
-      } else {
-        stop('Invalid value for argument nestedParallel. Must be TRUE/FALSE')
-      }
+      # run the models
+      models <- APPLYFUN(
+        formula.list[(1+(blocksize*(l-1))):(blocksize*l)],
+        function(f) summary(FUN(formula = f, data = df))$coefficients)
       names(models) <- variables[(1+(blocksize*(l-1))):(blocksize*l)]
 
       # detect failed models (return 'try' error)
@@ -393,74 +275,41 @@ bayesglmParallel <- function(
       )
       if (length(nullindices) > 1) {
         print(models[[nullindices[1]]][1])
-        stop(paste('\nOne or more models have failed. ',
+        stop('\nOne or more models have failed. ',
           'Please recheck your data and model formula. ',
           'In particular, check that your variable names ',
           'are valid, i.e., no spaces, do not begin with ',
           'a number, no hyphens or other punctuation, et ',
-          'cetera.', sep=''))
+          'cetera.')
       }
 
       # convert to data frames
-      if (system == 'Windows') {
-        wObjects <- parLapply(cl, names(models),
-          function(x) data.frame(
-            rep(x, length(rownames(models[[x]]))),
-            rownames(models[[x]]),
-            models[[x]],
-            row.names=rownames(models[[x]])))
-      } else {
-        wObjects <- mclapply(names(models),
-          function(x) data.frame(
-            rep(x, length(rownames(models[[x]]))),
-            rownames(models[[x]]),
-            models[[x]],
-            row.names=rownames(models[[x]])))
-      }
+      wObjects <- APPLYFUN(names(models),
+        function(x) data.frame(
+          rep(x, length(rownames(models[[x]]))),
+          rownames(models[[x]]),
+          models[[x]],
+          row.names=rownames(models[[x]])))
 
       # remove intercept and / or specified terms from the output
       if (!is.null(excludeTerms) && excludeIntercept == TRUE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            paste(c('\\(Intercept\\)', excludeTerms), collapse='|'),
+            rownames(x),
+            invert=TRUE),])
       } else if (is.null(excludeTerms) && excludeIntercept == TRUE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              '\\(Intercept\\)',
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              '\\(Intercept\\)',
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            '\\(Intercept\\)',
+            rownames(x),
+            invert=TRUE),])
       } else if (!is.null(excludeTerms) && excludeIntercept == FALSE) {
-        if (system == 'Windows') {
-          wObjects <- parLapply(cl, wObjects,
-            function(x) x[grep(
-              paste(c(excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        } else {
-          wObjects <- mclapply(wObjects,
-            function(x) x[grep(
-              paste(c(excludeTerms), collapse='|'),
-              rownames(x),
-              invert=TRUE),])
-        }
+        wObjects <- APPLYFUN(wObjects,
+          function(x) x[grep(
+            paste(c(excludeTerms), collapse='|'),
+            rownames(x),
+            invert=TRUE),])
       }
 
       #Convert the list into a data table

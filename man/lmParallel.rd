@@ -16,9 +16,7 @@ lmParallel(
   startIndex,
   blocksize,
   blocks,
-  system,
-  cl,
-  nestedParallel,
+  APPLYFUN,
   conflevel,
   excludeTerms,
   excludeIntercept)
@@ -43,16 +41,10 @@ lmParallel(
   REQUIRED.}
   \item{blocks}{Total number of blocks required to complete analysis.
   REQUIRED.}
-  \item{system}{The identified system on which the user is operating.
-  REQUIRED.}
-  \item{cl}{On Windows systems, the cluster object created by
-  makeCluster() that enables parallelisation. On other systems, will be
-  assigned NULL. REQUIRED.}
-  \item{nestedParallel}{In RegParallel, parallelisation initially occurs at
-  the block level, ie., multiple blocks of models are processed in parallel.
-  If nestedParallel is enabled, a second level of parallelisation occurs
-  within each block in addition. Warning! - this doubles the usage of cores.
-  REQUIRED.}
+  \item{APPLYFUN}{The apply function to be used within each block during
+  processing. Will be one of: 'mclapply(...)', system=linux/mac and
+  nestedParallel=TRUE; 'parLapply(cl, ...)', system=windows and
+  nestedParallel=TRUE; 'lapply(...)', nestedParallel=FALSE. REQUIRED.}
   \item{conflevel}{Confidence level for calculating odds or hazard ratios.
   REQUIRED.}
   \item{excludeTerms}{Remove these terms from the final output. These will

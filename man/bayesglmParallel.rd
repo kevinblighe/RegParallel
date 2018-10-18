@@ -16,9 +16,7 @@ bayesglmParallel(
   startIndex,
   blocksize,
   blocks,
-  system,
-  cl,
-  nestedParallel,
+  APPLYFUN,
   conflevel,
   excludeTerms,
   excludeIntercept)
@@ -30,7 +28,7 @@ bayesglmParallel(
   \item{formula.list}{A list containing formulae that can be coerced to
   formula class via as.formula(). REQUIRED.}
   \item{FUN}{Regression function. Must be of form, for example:
-  function(formula, data) glm(formula = formula, family=binomial, data = data).
+  function(formula, data) glm(formula = formula, family = binomial, data = data).
   REQUIRED.}
   \item{variables}{Vector of variable names in data to be tested
   independently. Each variable will have its own formula in formula.list.
@@ -43,16 +41,10 @@ bayesglmParallel(
   REQUIRED.}
   \item{blocks}{Total number of blocks required to complete analysis.
   REQUIRED.}
-  \item{system}{The identified system on which the user is operating.
-  REQUIRED.}
-  \item{cl}{On Windows systems, the cluster object created by
-  makeCluster() that enables parallelisation. On other systems, will be
-  assigned NULL. REQUIRED.}
-  \item{nestedParallel}{In RegParallel, parallelisation initially occurs at
-  the block level, ie., multiple blocks of models are processed in parallel.
-  If nestedParallel is enabled, a second level of parallelisation occurs
-  within each block in addition. Warning! - this doubles the usage of cores.
-  REQUIRED.}
+  \item{APPLYFUN}{The apply function to be used within each block during
+  processing. Will be one of: 'mclapply(...)', system=linux/mac and
+  nestedParallel=TRUE; 'parLapply(cl, ...)', system=windows and
+  nestedParallel=TRUE; 'lapply(...)', nestedParallel=FALSE. REQUIRED.}
   \item{conflevel}{Confidence level for calculating odds or hazard ratios.
   REQUIRED.}
   \item{excludeTerms}{Remove these terms from the final output. These will

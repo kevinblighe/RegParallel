@@ -1,33 +1,33 @@
 Standard regression functions in R enabled for parallel processing over large data-frames
 ================
 Kevin Blighe
-2018-09-27
+2018-10-02
 
--   [Introduction.](#introduction.)
--   [Installation.](#installation.)
-    -   [1. Download the package from Bioconductor.](#download-the-package-from-bioconductor.)
-    -   [2. Load the package into R session.](#load-the-package-into-r-session.)
--   [Quick start.](#quick-start.)
-    -   [1. Perform the most basic logistic regression analysis.](#perform-the-most-basic-logistic-regression-analysis.)
-    -   [2. Perform a basic linear regression.](#perform-a-basic-linear-regression.)
-    -   [3. Perform the most basic negative binomial logistic regression analysis.](#perform-the-most-basic-negative-binomial-logistic-regression-analysis.)
-    -   [4. Survival analysis via Cox Proportional Hazards regression.](#survival-analysis-via-cox-proportional-hazards-regression.)
-    -   [5. Perform a conditional logistic regression](#perform-a-conditional-logistic-regression)
--   [Advanced features.](#advanced-features.)
-    -   [1. Speed up processing](#speed-up-processing)
+-   [Introduction](#introduction)
+-   [Installation](#installation)
+    -   [1. Download the package from Bioconductor](#download-the-package-from-bioconductor)
+    -   [2. Load the package into R session](#load-the-package-into-r-session)
+-   [Quick start](#quick-start)
+    -   [Perform the most basic logistic regression analysis](#perform-the-most-basic-logistic-regression-analysis)
+    -   [Perform a basic linear regression](#perform-a-basic-linear-regression)
+    -   [Perform the most basic negative binomial logistic regression analysis](#perform-the-most-basic-negative-binomial-logistic-regression-analysis)
+    -   [Survival analysis via Cox Proportional Hazards regression](#survival-analysis-via-cox-proportional-hazards-regression)
+    -   [Perform a conditional logistic regression](#perform-a-conditional-logistic-regression)
+-   [Advanced features](#advanced-features)
+    -   [Speed up processing](#speed-up-processing)
         -   [~2000 tests; blocksize, 500; cores, 2; nestedParallel, TRUE](#tests-blocksize-500-cores-2-nestedparallel-true)
         -   [~2000 tests; blocksize, 500; cores, 2; nestedParallel, FALSE](#tests-blocksize-500-cores-2-nestedparallel-false)
         -   [~40000 tests; blocksize, 2000; cores, 2; nestedParallel, TRUE](#tests-blocksize-2000-cores-2-nestedparallel-true)
         -   [~40000 tests; blocksize, 2000; cores, 2; nestedParallel, FALSE](#tests-blocksize-2000-cores-2-nestedparallel-false)
         -   [~40000 tests; blocksize, 5000; cores, 3; nestedParallel, TRUE](#tests-blocksize-5000-cores-3-nestedparallel-true)
-    -   [2. Modify confidence intervals](#modify-confidence-intervals)
-    -   [3. Remove some terms from output / include the intercept](#remove-some-terms-from-output-include-the-intercept)
+    -   [Modify confidence intervals](#modify-confidence-intervals)
+    -   [Remove some terms from output / include the intercept](#remove-some-terms-from-output-include-the-intercept)
 -   [Acknowledgments](#acknowledgments)
 -   [Session info](#session-info)
 -   [References](#references)
 
-Introduction.
-=============
+Introduction
+============
 
 In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major bottleneck in these is the amount of time that it takes to complete these analyses.
 
@@ -35,63 +35,64 @@ With <i>RegParallel</i>, a large number of tests can be performed simultaneously
 
 Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.
 
-Installation.
-=============
+Installation
+============
 
-1. Download the package from Bioconductor.
-------------------------------------------
+1. Download the package from Bioconductor
+-----------------------------------------
 
 ``` r
-if (!requireNamespace("BiocManager", quietly = TRUE)) 
-install.packages("BiocManager")
+    if (!requireNamespace('BiocManager', quietly = TRUE))
 
-BiocManager::install("RegParallel")
+        install.packages('BiocManager')
+
+        BiocManager::install('RegParallel')
 ```
 
 Note: to install development version:
 
 ``` r
-devtools::install_github("kevinblighe/RegParallel")
+    devtools::install_github('kevinblighe/RegParallel')
 ```
 
-2. Load the package into R session.
------------------------------------
+2. Load the package into R session
+----------------------------------
 
 ``` r
-library(RegParallel)
+    library(RegParallel)
 ```
 
-Quick start.
-============
+Quick start
+===========
 
 For this quick start, we will follow the tutorial (from Section 3.1) of [RNA-seq workflow: gene-level exploratory analysis and differential expression](http://master.bioconductor.org/packages/release/workflows/vignettes/rnaseqGene/inst/doc/rnaseqGene.html). Specifically, we will load the 'airway' data, where different airway smooth muscle cells were treated with dexamethasone.
 
 ``` r
-library(airway)
+    library(airway)
 
-library(magrittr)
+    library(magrittr)
 
-data("airway")
+    data('airway')
 
-airway$dex %<>% relevel("untrt")
+    airway$dex %<>% relevel('untrt')
 ```
 
 Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 
 ``` r
-library(DESeq2)
+    library(DESeq2)
 
-dds <- DESeqDataSet(airway, design = ~dex + cell)
+    dds <- DESeqDataSet(airway, design = ~ dex + cell)
 
-dds <- DESeq(dds, betaPrior = FALSE)
+    dds <- DESeq(dds, betaPrior = FALSE)
 
-rlogcounts <- assay(rlog(dds, blind = FALSE))
+    rlogcounts <- assay(rlog(dds, blind = FALSE))
 
-rlogdata <- data.frame(colData(airway), t(rlogcounts))
+    rlogdata <- data.frame(colData(airway), t(rlogcounts))
 ```
 
-1. Perform the most basic logistic regression analysis.
--------------------------------------------------------
+Perform the most basic logistic regression analysis
+---------------------------------------------------
 
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>, with dexamethasone as the dependent variable.
 
@@ -142,8 +143,8 @@ Here, we fit a binomial logistic regression model to the data via <i>glmParallel
     ## 2820:  0.0004042891 0.99967742 1.499223e+171 0.000000e+00           NA
     ## 2821: -0.0004028919 0.99967854  3.514359e-95 0.000000e+00           NA
 
-2. Perform a basic linear regression.
--------------------------------------
+Perform a basic linear regression
+---------------------------------
 
 Here, we will perform the linear regression using both <i>glmParallel</i> and <i>lmParallel</i>. We will appreciate that a linear regression is the same using either function with the default settings.
 
@@ -244,8 +245,8 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
     ## 522: 0.0177922771 1.0608458 1.0296864 1.0929482
     ## 523: 0.0282890537 0.7513552 0.6359690 0.8876762
 
-3. Perform the most basic negative binomial logistic regression analysis.
--------------------------------------------------------------------------
+Perform the most basic negative binomial logistic regression analysis
+---------------------------------------------------------------------
 
 Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged counts in RNA-seq naturally follow a negative binomial / Poisson-like distribution. <i>glm.nbParallel</i> will be used.
 
@@ -310,8 +311,8 @@ Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged c
     ## 2820: 0.7272727 0.04715465  11.2168280
     ## 2821: 1.7368421 0.07355573  41.0113595
 
-4. Survival analysis via Cox Proportional Hazards regression.
--------------------------------------------------------------
+Survival analysis via Cox Proportional Hazards regression
+---------------------------------------------------------
 
 For this example, we will load breast cancer gene expression data with recurrence free survival (RFS) from [Gene Expression Profiling in Breast Cancer: Understanding the Molecular Basis of Histologic Grade To Improve Prognosis](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE2990). Specifically, we will encode each gene's expression into Low|Mid|High based on Z-scores and compare these against RFS while adjusting for tumour grade in a Cox Proportional Hazards model.
 
@@ -572,8 +573,8 @@ Plot the survival curves and place Log Rank p-value in the plots:
 
 ![Survival analysis via Cox Proportional Hazards regression.](README_files/figure-markdown_github/coxphParallel5-2.png)
 
-5. Perform a conditional logistic regression
---------------------------------------------
+Perform a conditional logistic regression
+-----------------------------------------
 
 In this example, we will re-use the Cox data for the purpose of performing conditional logistic regression with tumour grade as our grouping / matching factor. For this example, we will use ER status as the dependent variable and also adjust for age.
 
@@ -671,20 +672,20 @@ In this example, we will re-use the Cox data for the purpose of performing condi
 ```
 
     ##   affy_hg_u133a ensembl_gene_id   gene_biotype external_gene_name
-    ## 1     205225_at ENSG00000091831 protein_coding               ESR1
-    ## 2     212108_at ENSG00000113194 protein_coding               FAF2
-    ## 3   207813_s_at ENSG00000161513 protein_coding               FDXR
-    ## 4   219497_s_at ENSG00000119866 protein_coding             BCL11A
+    ## 1     212108_at ENSG00000113194 protein_coding               FAF2
+    ## 2   219497_s_at ENSG00000119866 protein_coding             BCL11A
+    ## 3     205225_at ENSG00000091831 protein_coding               ESR1
+    ## 4   207813_s_at ENSG00000161513 protein_coding               FDXR
 
 Oestrogen receptor (<i>ESR1</i>) comes out top - makes sense! Also, although 204667\_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>, which also makes sense in relation to oestrogen signalling.
 
-Advanced features.
-==================
+Advanced features
+=================
 
 Advanced features include the ability to modify block size, choose different numbers of cores, enable 'nested' parallel processing, modify limits for confidence intervals, and exclude certain model terms from output.
 
-1. Speed up processing
-----------------------
+Speed up processing
+-------------------
 
 First create some test data for the purpose of benchmarking:
 
@@ -764,7 +765,7 @@ With 2 cores instead of the default of 3, coupled with nestedParallel being enab
 ```
 
     ##    user  system elapsed 
-    ##  11.240   3.644  10.379
+    ##  11.500   3.616   9.060
 
 ### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, FALSE
 
@@ -805,7 +806,7 @@ With 2 cores instead of the default of 3, coupled with nestedParallel being enab
 ```
 
     ##    user  system elapsed 
-    ##  10.384   2.200  11.800
+    ##  11.728   3.704  13.392
 
 Focusing on the elapsed time (as system time only reports time from the last core that finished), we can see that nested processing has negligible improvement or may actually be slower under certain conditions when tested over a small number of variables. This is likely due to the system being slowed by simply managing the larger number of threads. Nested processing's benefits can only be gained when processing a large number of variables:
 
@@ -844,7 +845,7 @@ Focusing on the elapsed time (as system time only reports time from the last cor
 ```
 
     ##    user  system elapsed 
-    ## 595.344  47.856 217.441
+    ## 299.168  32.516 185.588
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, FALSE
 
@@ -880,7 +881,7 @@ Focusing on the elapsed time (as system time only reports time from the last cor
 ```
 
     ##    user  system elapsed 
-    ## 244.968  19.200 243.217
+    ## 254.800  19.248 250.029
 
 Performance is system-dependent and even increasing cores may not result in huge gains in time. Performance is a trade-off between cores, forked threads, blocksize, and the number of terms in each model.
 
@@ -920,10 +921,10 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
 ```
 
     ##    user  system elapsed 
-    ## 610.356  20.352 263.859
+    ## 596.368  30.092 295.047
 
-2. Modify confidence intervals
-------------------------------
+Modify confidence intervals
+---------------------------
 
 ``` r
   df <- modelling[ ,1:500]
@@ -959,30 +960,30 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     conflevel = 99)
 ```
 
-    ##       Variable         Term       Beta StandardError          Z        P
-    ##    1:    gene1        gene1 -0.0109204     0.0689007 -0.1584951 0.874067
-    ##    2:    gene1 cellB:dosage  0.3728878     0.9595806  0.3885946 0.697576
-    ##    3:    gene1 cellT:dosage -0.0278420     1.0843501 -0.0256762 0.979516
-    ##    4:    gene2        gene2  0.0264829     0.0927982  0.2853817 0.775352
-    ##    5:    gene2 cellB:dosage  0.5225659     1.0750964  0.4860642 0.626922
-    ##   ---                                                                   
-    ## 1487:  gene496 cellB:dosage  0.5507197     1.0071728  0.5467976 0.584518
-    ## 1488:  gene496 cellT:dosage  0.1668187     1.1165925  0.1493998 0.881238
-    ## 1489:  gene497      gene497  0.0346812     0.0520938  0.6657448 0.505574
-    ## 1490:  gene497 cellB:dosage  0.3142122     0.9531289  0.3296640 0.741654
-    ## 1491:  gene497 cellT:dosage  0.0468639     1.0777857  0.0434816 0.965318
-    ##             OR   ORlower  ORupper
-    ##    1: 0.989139 0.8282860  1.18123
-    ##    2: 1.451921 0.1226000 17.19474
-    ##    3: 0.972542 0.0595498 15.88315
-    ##    4: 1.026837 0.8085203  1.30410
-    ##    5: 1.686349 0.1057477 26.89205
-    ##   ---                            
-    ## 1487: 1.734501 0.1295633 23.22025
-    ## 1488: 1.181540 0.0665812 20.96743
-    ## 1489: 1.035290 0.9052868  1.18396
-    ## 1490: 1.369180 0.1175508 15.94762
-    ## 1491: 1.047979 0.0652631 16.82820
+    ##       Variable         Term      Beta StandardError        Z         P
+    ##    1:    gene1        gene1 0.0971430     0.0953680 1.018612 0.3083870
+    ##    2:    gene1 cellB:dosage 1.6117000     1.0946411 1.472355 0.1409251
+    ##    3:    gene1 cellT:dosage 2.5790395     1.5705041 1.642173 0.1005541
+    ##    4:    gene2        gene2 0.1680148     0.1493775 1.124766 0.2606881
+    ##    5:    gene2 cellB:dosage 2.7776411     1.7257243 1.609551 0.1074959
+    ##   ---                                                                 
+    ## 1487:  gene496 cellB:dosage 1.5511712     1.0707856 1.448629 0.1474412
+    ## 1488:  gene496 cellT:dosage 2.4392533     1.4814612 1.646519 0.0996571
+    ## 1489:  gene497      gene497 0.0461309     0.0719427 0.641218 0.5213810
+    ## 1490:  gene497 cellB:dosage 1.6060778     1.0630999 1.510750 0.1308523
+    ## 1491:  gene497 cellT:dosage 2.5508292     1.5013626 1.699009 0.0893174
+    ##             OR  ORlower    ORupper
+    ##    1:  1.10202 0.861993    1.40888
+    ##    2:  5.01132 0.298822   84.04133
+    ##    3: 13.18447 0.230775  753.24457
+    ##    4:  1.18295 0.805126    1.73809
+    ##    5: 16.08104 0.188713 1370.33728
+    ##   ---                             
+    ## 1487:  4.71699 0.299096   74.39079
+    ## 1488: 11.46448 0.252401  520.73668
+    ## 1489:  1.04721 0.870070    1.26042
+    ## 1490:  4.98323 0.322296   77.04901
+    ## 1491: 12.81773 0.268092  612.82719
 
 ``` r
   # 95% confidfence intervals (default)
@@ -1015,33 +1016,33 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     conflevel = 95)
 ```
 
-    ##       Variable         Term       Beta StandardError          Z        P
-    ##    1:    gene1        gene1 -0.0109204     0.0689007 -0.1584951 0.874067
-    ##    2:    gene1 cellB:dosage  0.3728878     0.9595806  0.3885946 0.697576
-    ##    3:    gene1 cellT:dosage -0.0278420     1.0843501 -0.0256762 0.979516
-    ##    4:    gene2        gene2  0.0264829     0.0927982  0.2853817 0.775352
-    ##    5:    gene2 cellB:dosage  0.5225659     1.0750964  0.4860642 0.626922
-    ##   ---                                                                   
-    ## 1487:  gene496 cellB:dosage  0.5507197     1.0071728  0.5467976 0.584518
-    ## 1488:  gene496 cellT:dosage  0.1668187     1.1165925  0.1493998 0.881238
-    ## 1489:  gene497      gene497  0.0346812     0.0520938  0.6657448 0.505574
-    ## 1490:  gene497 cellB:dosage  0.3142122     0.9531289  0.3296640 0.741654
-    ## 1491:  gene497 cellT:dosage  0.0468639     1.0777857  0.0434816 0.965318
-    ##             OR  ORlower  ORupper
-    ##    1: 0.989139 0.864189  1.13215
-    ##    2: 1.451921 0.221384  9.52225
-    ##    3: 0.972542 0.116120  8.14533
-    ##    4: 1.026837 0.856074  1.23166
-    ##    5: 1.686349 0.205033 13.86983
-    ##   ---                           
-    ## 1487: 1.734501 0.240917 12.48767
-    ## 1488: 1.181540 0.132435 10.54129
-    ## 1489: 1.035290 0.934802  1.14658
-    ## 1490: 1.369180 0.211425  8.86677
-    ## 1491: 1.047979 0.126748  8.66494
+    ##       Variable         Term      Beta StandardError        Z         P
+    ##    1:    gene1        gene1 0.0971430     0.0953680 1.018612 0.3083870
+    ##    2:    gene1 cellB:dosage 1.6117000     1.0946411 1.472355 0.1409251
+    ##    3:    gene1 cellT:dosage 2.5790395     1.5705041 1.642173 0.1005541
+    ##    4:    gene2        gene2 0.1680148     0.1493775 1.124766 0.2606881
+    ##    5:    gene2 cellB:dosage 2.7776411     1.7257243 1.609551 0.1074959
+    ##   ---                                                                 
+    ## 1487:  gene496 cellB:dosage 1.5511712     1.0707856 1.448629 0.1474412
+    ## 1488:  gene496 cellT:dosage 2.4392533     1.4814612 1.646519 0.0996571
+    ## 1489:  gene497      gene497 0.0461309     0.0719427 0.641218 0.5213810
+    ## 1490:  gene497 cellB:dosage 1.6060778     1.0630999 1.510750 0.1308523
+    ## 1491:  gene497 cellT:dosage 2.5508292     1.5013626 1.699009 0.0893174
+    ##             OR  ORlower   ORupper
+    ##    1:  1.10202 0.914137   1.32851
+    ##    2:  5.01132 0.586398  42.82650
+    ##    3: 13.18447 0.607082 286.33744
+    ##    4:  1.18295 0.882709   1.58532
+    ##    5: 16.08104 0.546229 473.42735
+    ##   ---                            
+    ## 1487:  4.71699 0.578377  38.46976
+    ## 1488: 11.46448 0.628539 209.11073
+    ## 1489:  1.04721 0.909487   1.20579
+    ## 1490:  4.98323 0.620295  40.03345
+    ## 1491: 12.81773 0.675848 243.09343
 
-3. Remove some terms from output / include the intercept
---------------------------------------------------------
+Remove some terms from output / include the intercept
+-----------------------------------------------------
 
 ``` r
   # remove terms but keep Intercept
@@ -1078,30 +1079,30 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     excludeIntercept = FALSE)
 ```
 
-    ##      Variable        Term        Beta StandardError          Z        P
-    ##   1:    gene1 (Intercept) -0.03211213     1.0858448 -0.0295734 0.976407
-    ##   2:    gene1       gene1 -0.01092042     0.0689007 -0.1584951 0.874067
-    ##   3:    gene2 (Intercept) -0.45007191     1.2739806 -0.3532800 0.723879
-    ##   4:    gene2       gene2  0.02648291     0.0927982  0.2853817 0.775352
-    ##   5:    gene3 (Intercept) -0.30478036     0.8448080 -0.3607688 0.718272
+    ##      Variable        Term        Beta StandardError         Z         P
+    ##   1:    gene1 (Intercept) -2.58215111     1.4459237 -1.785814 0.0741293
+    ##   2:    gene1       gene1  0.09714302     0.0953680  1.018612 0.3083870
+    ##   3:    gene2 (Intercept) -4.35968660     2.8722954 -1.517841 0.1290546
+    ##   4:    gene2       gene2  0.16801480     0.1493775  1.124766 0.2606881
+    ##   5:    gene3 (Intercept) -1.50331321     1.1372431 -1.321893 0.1862039
     ##  ---                                                                   
-    ## 990:  gene495     gene495 -0.00792455     0.0473300 -0.1674318 0.867030
-    ## 991:  gene496 (Intercept)  0.30011738     0.9001779  0.3333978 0.738834
-    ## 992:  gene496     gene496 -0.04487824     0.0521597 -0.8604011 0.389568
-    ## 993:  gene497 (Intercept) -0.49045902     0.9085299 -0.5398380 0.589309
-    ## 994:  gene497     gene497  0.03468115     0.0520938  0.6657448 0.505574
-    ##            OR   ORlower ORupper
-    ##   1: 0.968398 0.1152872 8.13442
-    ##   2: 0.989139 0.8641895 1.13215
-    ##   3: 0.637582 0.0524955 7.74374
-    ##   4: 1.026837 0.8560742 1.23166
-    ##   5: 0.737285 0.1407776 3.86133
-    ##  ---                           
-    ## 990: 0.992107 0.9042135 1.08854
-    ## 991: 1.350017 0.2312632 7.88083
-    ## 992: 0.956114 0.8631996 1.05903
-    ## 993: 0.612345 0.1031940 3.63361
-    ## 994: 1.035290 0.9348018 1.14658
+    ## 990:  gene495     gene495  0.00664412     0.0598731  0.110970 0.9116401
+    ## 991:  gene496 (Intercept) -1.44596974     1.2491537 -1.157560 0.2470438
+    ## 992:  gene496     gene496 -0.03452570     0.0793411 -0.435155 0.6634498
+    ## 993:  gene497 (Intercept) -2.07967450     1.2370671 -1.681133 0.0927371
+    ## 994:  gene497     gene497  0.04613094     0.0719427  0.641218 0.5213810
+    ##             OR      ORlower ORupper
+    ##   1: 0.0756112 0.0044444043 1.28635
+    ##   2: 1.1020180 0.9141370189 1.32851
+    ##   3: 0.0127824 0.0000458891 3.56053
+    ##   4: 1.1829541 0.8827089359 1.58532
+    ##   5: 0.2223921 0.0239384657 2.06606
+    ##  ---                               
+    ## 990: 1.0066662 0.8952027989 1.13201
+    ## 991: 0.2355176 0.0203583119 2.72461
+    ## 992: 0.9660635 0.8269331640 1.12860
+    ## 993: 0.1249709 0.0110615346 1.41189
+    ## 994: 1.0472115 0.9094874384 1.20579
 
 ``` r
   # remove everything but the variable being tested
@@ -1138,30 +1139,30 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
     excludeIntercept = TRUE)
 ```
 
-    ##      Variable    Term        Beta StandardError         Z        P
-    ##   1:    gene1   gene1 -0.01092042     0.0689007 -0.158495 0.874067
-    ##   2:    gene2   gene2  0.02648291     0.0927982  0.285382 0.775352
-    ##   3:    gene3   gene3  0.02693608     0.0680863  0.395617 0.692388
-    ##   4:    gene4   gene4 -0.01921264     0.0399696 -0.480681 0.630743
-    ##   5:    gene5   gene5 -0.01449605     0.0331237 -0.437633 0.661652
-    ##  ---                                                              
-    ## 493:  gene493 gene493  0.02015639     0.0372425  0.541220 0.588356
-    ## 494:  gene494 gene494  0.10100270     0.0764239  1.321612 0.186297
-    ## 495:  gene495 gene495 -0.00792455     0.0473300 -0.167432 0.867030
-    ## 496:  gene496 gene496 -0.04487824     0.0521597 -0.860401 0.389568
-    ## 497:  gene497 gene497  0.03468115     0.0520938  0.665745 0.505574
+    ##      Variable    Term        Beta StandardError         Z         P
+    ##   1:    gene1   gene1  0.09714302     0.0953680  1.018612 0.3083870
+    ##   2:    gene2   gene2  0.16801480     0.1493775  1.124766 0.2606881
+    ##   3:    gene3   gene3 -0.05455133     0.0494601 -1.102936 0.2700549
+    ##   4:    gene4   gene4  0.01018351     0.0642302  0.158547 0.8740258
+    ##   5:    gene5   gene5  0.16138040     0.0960876  1.679513 0.0930522
+    ##  ---                                                               
+    ## 493:  gene493 gene493  0.00700969     0.0452056  0.155063 0.8767719
+    ## 494:  gene494 gene494 -0.06715625     0.0589393 -1.139414 0.2545307
+    ## 495:  gene495 gene495  0.00664412     0.0598731  0.110970 0.9116401
+    ## 496:  gene496 gene496 -0.03452570     0.0793411 -0.435155 0.6634498
+    ## 497:  gene497 gene497  0.04613094     0.0719427  0.641218 0.5213810
     ##            OR  ORlower ORupper
-    ##   1: 0.989139 0.864189 1.13215
-    ##   2: 1.026837 0.856074 1.23166
-    ##   3: 1.027302 0.898965 1.17396
-    ##   4: 0.980971 0.907056 1.06091
-    ##   5: 0.985609 0.923654 1.05172
+    ##   1: 1.102018 0.914137 1.32851
+    ##   2: 1.182954 0.882709 1.58532
+    ##   3: 0.946910 0.859425 1.04330
+    ##   4: 1.010236 0.890738 1.14576
+    ##   5: 1.175132 0.973412 1.41865
     ##  ---                          
-    ## 493: 1.020361 0.948534 1.09763
-    ## 494: 1.106280 0.952386 1.28504
-    ## 495: 0.992107 0.904214 1.08854
-    ## 496: 0.956114 0.863200 1.05903
-    ## 497: 1.035290 0.934802 1.14658
+    ## 493: 1.007034 0.921648 1.10033
+    ## 494: 0.935049 0.833039 1.04955
+    ## 495: 1.006666 0.895203 1.13201
+    ## 496: 0.966064 0.826933 1.12860
+    ## 497: 1.047212 0.909487 1.20579
 
 Acknowledgments
 ===============
@@ -1170,7 +1171,7 @@ Acknowledgments
 
 [Jessica Lasky-Su](https://connects.catalyst.harvard.edu/Profiles/display/Person/79780), [Myles Lewis](https://www.qmul.ac.uk/whri/people/academic-staff/items/lewismyles.html), [Michael Barnes](https://www.qmul.ac.uk/whri/people/academic-staff/items/barnesmichael.html)
 
-Thanks also to Horacio Montenegro for testing.
+Thanks also to Horacio Montenegro and GenoMax for testing.
 
 Session info
 ============
@@ -1226,28 +1227,28 @@ sessionInfo()
     ## [16] broom_0.5.0            km.ci_0.5-2            annotate_1.59.0       
     ## [19] cluster_2.0.7-1        readr_1.1.1            compiler_3.5.1        
     ## [22] httr_1.3.1             backports_1.1.2        assertthat_0.2.0      
-    ## [25] lazyeval_0.2.1         limma_3.37.3           formatR_1.5           
-    ## [28] acepack_1.4.1          htmltools_0.3.6        prettyunits_1.0.2     
-    ## [31] tools_3.5.1            coda_0.19-1            gtable_0.2.0          
-    ## [34] glue_1.3.0             GenomeInfoDbData_1.1.0 dplyr_0.7.6           
-    ## [37] Rcpp_0.12.18           nlme_3.1-137           XML_3.98-1.16         
-    ## [40] zlibbioc_1.27.0        zoo_1.8-3              scales_1.0.0          
-    ## [43] hms_0.4.2              RColorBrewer_1.1-2     yaml_2.2.0            
-    ## [46] curl_3.2               memoise_1.1.0          gridExtra_2.3         
-    ## [49] KMsurv_0.1-5           rpart_4.1-13           latticeExtra_0.6-28   
-    ## [52] stringi_1.2.4          RSQLite_2.1.1          highr_0.7             
-    ## [55] genefilter_1.63.0      checkmate_1.8.5        rlang_0.2.2           
-    ## [58] pkgconfig_2.0.1        bitops_1.0-6           evaluate_0.11         
-    ## [61] lattice_0.20-35        purrr_0.2.5            bindr_0.1.1           
-    ## [64] labeling_0.3           htmlwidgets_1.2        cmprsk_2.2-7          
-    ## [67] bit_1.1-14             tidyselect_0.2.4       plyr_1.8.4            
-    ## [70] R6_2.2.2               Hmisc_4.1-1            DBI_1.0.0             
-    ## [73] pillar_1.3.0           foreign_0.8-70         withr_2.1.2           
-    ## [76] abind_1.4-5            RCurl_1.95-4.11        nnet_7.3-12           
-    ## [79] tibble_1.4.2           crayon_1.3.4           survMisc_0.5.5        
-    ## [82] rmarkdown_1.10         progress_1.2.0         locfit_1.5-9.1        
-    ## [85] grid_3.5.1             blob_1.1.1             digest_0.6.16         
-    ## [88] xtable_1.8-2           tidyr_0.8.1            munsell_0.5.0
+    ## [25] lazyeval_0.2.1         limma_3.37.3           acepack_1.4.1         
+    ## [28] htmltools_0.3.6        prettyunits_1.0.2      tools_3.5.1           
+    ## [31] coda_0.19-1            gtable_0.2.0           glue_1.3.0            
+    ## [34] GenomeInfoDbData_1.1.0 dplyr_0.7.6            Rcpp_0.12.18          
+    ## [37] nlme_3.1-137           XML_3.98-1.16          zlibbioc_1.27.0       
+    ## [40] zoo_1.8-3              scales_1.0.0           hms_0.4.2             
+    ## [43] RColorBrewer_1.1-2     yaml_2.2.0             curl_3.2              
+    ## [46] memoise_1.1.0          gridExtra_2.3          KMsurv_0.1-5          
+    ## [49] rpart_4.1-13           latticeExtra_0.6-28    stringi_1.2.4         
+    ## [52] RSQLite_2.1.1          highr_0.7              genefilter_1.63.0     
+    ## [55] checkmate_1.8.5        rlang_0.2.2            pkgconfig_2.0.1       
+    ## [58] bitops_1.0-6           evaluate_0.11          lattice_0.20-35       
+    ## [61] purrr_0.2.5            bindr_0.1.1            htmlwidgets_1.2       
+    ## [64] labeling_0.3           cmprsk_2.2-7           bit_1.1-14            
+    ## [67] tidyselect_0.2.4       plyr_1.8.4             R6_2.2.2              
+    ## [70] Hmisc_4.1-1            DBI_1.0.0              pillar_1.3.0          
+    ## [73] foreign_0.8-70         withr_2.1.2            abind_1.4-5           
+    ## [76] RCurl_1.95-4.11        nnet_7.3-12            tibble_1.4.2          
+    ## [79] crayon_1.3.4           survMisc_0.5.5         rmarkdown_1.10        
+    ## [82] progress_1.2.0         locfit_1.5-9.1         grid_3.5.1            
+    ## [85] blob_1.1.1             digest_0.6.16          xtable_1.8-2          
+    ## [88] tidyr_0.8.1            munsell_0.5.0
 
 References
 ==========

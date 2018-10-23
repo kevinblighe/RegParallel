@@ -357,7 +357,7 @@ We now take the top probes from the model by Log Rank p-value and use
 
   library(biomaRt)
 
-  mart <- useMart('ENSEMBL_MART_ENSEMBL', host='useast.ensembl.org')
+  mart <- useMart('ENSEMBL_MART_ENSEMBL')
 
   mart <- useDataset("hsapiens_gene_ensembl", mart)
 

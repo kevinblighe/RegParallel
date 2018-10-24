@@ -1,7 +1,7 @@
 Standard regression functions in R enabled for parallel processing over large data-frames
 ================
 Kevin Blighe
-2018-10-18
+2018-10-23
 
 -   [Introduction](#introduction)
 -   [Installation](#installation)
@@ -466,7 +466,7 @@ We now take the top probes from the model by Log Rank p-value and use <i>biomaRt
 
   library(biomaRt)
 
-  mart <- useMart('ENSEMBL_MART_ENSEMBL', host='useast.ensembl.org')
+  mart <- useMart('ENSEMBL_MART_ENSEMBL')
 
   mart <- useDataset("hsapiens_gene_ensembl", mart)
 
@@ -765,7 +765,7 @@ With 2 cores instead of the default of 3, coupled with nestedParallel being enab
 ```
 
     ##    user  system elapsed 
-    ##  11.808   3.448  10.426
+    ##  11.848   3.936   9.967
 
 ### ~2000 tests; blocksize, 500; cores, 2; nestedParallel, FALSE
 
@@ -806,7 +806,7 @@ With 2 cores instead of the default of 3, coupled with nestedParallel being enab
 ```
 
     ##    user  system elapsed 
-    ##  12.248   3.032  14.188
+    ##  10.128   2.536  10.988
 
 Focusing on the elapsed time (as system time only reports time from the last core that finished), we can see that nested processing has negligible improvement or may actually be slower under certain conditions when tested over a small number of variables. This is likely due to the system being slowed by simply managing the larger number of threads. Nested processing's benefits can only be gained when processing a large number of variables:
 
@@ -845,7 +845,7 @@ Focusing on the elapsed time (as system time only reports time from the last cor
 ```
 
     ##    user  system elapsed 
-    ## 308.848  32.764 204.371
+    ## 629.692  60.036 247.076
 
 ### ~40000 tests; blocksize, 2000; cores, 2; nestedParallel, FALSE
 
@@ -881,7 +881,7 @@ Focusing on the elapsed time (as system time only reports time from the last cor
 ```
 
     ##    user  system elapsed 
-    ## 264.032  19.592 259.152
+    ## 266.404  19.904 264.378
 
 Performance is system-dependent and even increasing cores may not result in huge gains in time. Performance is a trade-off between cores, forked threads, blocksize, and the number of terms in each model.
 
@@ -921,7 +921,7 @@ In this example, we choose a large blocksize and 3 cores. With nestedParallel en
 ```
 
     ##    user  system elapsed 
-    ## 604.016  30.400 309.528
+    ## 962.268  36.896 298.739
 
 Modify confidence intervals
 ---------------------------
@@ -960,30 +960,30 @@ Modify confidence intervals
     conflevel = 99)
 ```
 
-    ##       Variable         Term       Beta StandardError         Z        P
-    ##    1:    gene1        gene1  0.0250101     0.0693388  0.360694 0.718328
-    ##    2:    gene1 cellB:dosage -0.5122450     0.7065586 -0.724986 0.468461
-    ##    3:    gene1 cellT:dosage -2.5689915     1.7902982 -1.434952 0.151301
-    ##    4:    gene2        gene2  0.1300103     0.0921128  1.411425 0.158119
-    ##    5:    gene2 cellB:dosage -0.9447715     0.8895528 -1.062075 0.288202
-    ##   ---                                                                  
-    ## 1487:  gene496 cellB:dosage -0.3960866     0.7359730 -0.538181 0.590452
-    ## 1488:  gene496 cellT:dosage -2.7840051     1.9402784 -1.434848 0.151330
-    ## 1489:  gene497      gene497  0.0565021     0.0674815  0.837298 0.402425
-    ## 1490:  gene497 cellB:dosage -0.4840437     0.7281231 -0.664783 0.506189
-    ## 1491:  gene497 cellT:dosage -2.6234540     1.8586347 -1.411495 0.158099
-    ##              OR     ORlower ORupper
-    ##    1: 1.0253254 0.857619409 1.22583
-    ##    2: 0.5991490 0.097080067 3.69777
-    ##    3: 0.0766128 0.000761292 7.70995
-    ##    4: 1.1388401 0.898295252 1.44380
-    ##    5: 0.3887684 0.039316632 3.84420
-    ##   ---                              
-    ## 1487: 0.6729484 0.101081563 4.48014
-    ## 1488: 0.0617905 0.000417247 9.15061
-    ## 1489: 1.0581288 0.889301783 1.25901
-    ## 1490: 0.6162863 0.094461355 4.02078
-    ## 1491: 0.0725518 0.000604578 8.70652
+    ##       Variable         Term        Beta StandardError          Z        P
+    ##    1:    gene1        gene1 -0.08951470     0.0780061 -1.1475352 0.251160
+    ##    2:    gene1 cellB:dosage -0.17863189     0.5259518 -0.3396355 0.734131
+    ##    3:    gene1 cellT:dosage  0.06570271     0.4771340  0.1377028 0.890475
+    ##    4:    gene2        gene2  0.02532119     0.0424300  0.5967761 0.550657
+    ##    5:    gene2 cellB:dosage -0.41405439     0.4690949 -0.8826666 0.377416
+    ##   ---                                                                    
+    ## 1487:  gene496 cellB:dosage -0.34489143     0.5142069 -0.6707250 0.502396
+    ## 1488:  gene496 cellT:dosage -0.00755701     0.4770404 -0.0158414 0.987361
+    ## 1489:  gene497      gene497 -0.03500814     0.0360875 -0.9700899 0.332002
+    ## 1490:  gene497 cellB:dosage -0.50334207     0.4914513 -1.0241951 0.305743
+    ## 1491:  gene497 cellT:dosage -0.04107440     0.4748304 -0.0865033 0.931066
+    ##             OR  ORlower ORupper
+    ##    1: 0.914375 0.747931 1.11786
+    ##    2: 0.836414 0.215802 3.24180
+    ##    3: 1.067909 0.312449 3.64997
+    ##    4: 1.025644 0.919458 1.14409
+    ##    5: 0.660965 0.197432 2.21279
+    ##   ---                          
+    ## 1487: 0.708297 0.188360 2.66344
+    ## 1488: 0.992471 0.290448 3.39132
+    ## 1489: 0.965598 0.879886 1.05966
+    ## 1490: 0.604507 0.170463 2.14374
+    ## 1491: 0.959758 0.282477 3.26091
 
 ``` r
   # 95% confidfence intervals (default)
@@ -1016,30 +1016,30 @@ Modify confidence intervals
     conflevel = 95)
 ```
 
-    ##       Variable         Term       Beta StandardError         Z        P
-    ##    1:    gene1        gene1  0.0250101     0.0693388  0.360694 0.718328
-    ##    2:    gene1 cellB:dosage -0.5122450     0.7065586 -0.724986 0.468461
-    ##    3:    gene1 cellT:dosage -2.5689915     1.7902982 -1.434952 0.151301
-    ##    4:    gene2        gene2  0.1300103     0.0921128  1.411425 0.158119
-    ##    5:    gene2 cellB:dosage -0.9447715     0.8895528 -1.062075 0.288202
-    ##   ---                                                                  
-    ## 1487:  gene496 cellB:dosage -0.3960866     0.7359730 -0.538181 0.590452
-    ## 1488:  gene496 cellT:dosage -2.7840051     1.9402784 -1.434848 0.151330
-    ## 1489:  gene497      gene497  0.0565021     0.0674815  0.837298 0.402425
-    ## 1490:  gene497 cellB:dosage -0.4840437     0.7281231 -0.664783 0.506189
-    ## 1491:  gene497 cellT:dosage -2.6234540     1.8586347 -1.411495 0.158099
-    ##              OR    ORlower ORupper
-    ##    1: 1.0253254 0.89503586 1.17458
-    ##    2: 0.5991490 0.15000685 2.39309
-    ##    3: 0.0766128 0.00229296 2.55980
-    ##    4: 1.1388401 0.95072786 1.36417
-    ##    5: 0.3887684 0.06799896 2.22269
-    ##   ---                             
-    ## 1487: 0.6729484 0.15904513 2.84737
-    ## 1488: 0.0617905 0.00137833 2.77006
-    ## 1489: 1.0581288 0.92703946 1.20776
-    ## 1490: 0.6162863 0.14791186 2.56780
-    ## 1491: 0.0725518 0.00189922 2.77154
+    ##       Variable         Term        Beta StandardError          Z        P
+    ##    1:    gene1        gene1 -0.08951470     0.0780061 -1.1475352 0.251160
+    ##    2:    gene1 cellB:dosage -0.17863189     0.5259518 -0.3396355 0.734131
+    ##    3:    gene1 cellT:dosage  0.06570271     0.4771340  0.1377028 0.890475
+    ##    4:    gene2        gene2  0.02532119     0.0424300  0.5967761 0.550657
+    ##    5:    gene2 cellB:dosage -0.41405439     0.4690949 -0.8826666 0.377416
+    ##   ---                                                                    
+    ## 1487:  gene496 cellB:dosage -0.34489143     0.5142069 -0.6707250 0.502396
+    ## 1488:  gene496 cellT:dosage -0.00755701     0.4770404 -0.0158414 0.987361
+    ## 1489:  gene497      gene497 -0.03500814     0.0360875 -0.9700899 0.332002
+    ## 1490:  gene497 cellB:dosage -0.50334207     0.4914513 -1.0241951 0.305743
+    ## 1491:  gene497 cellT:dosage -0.04107440     0.4748304 -0.0865033 0.931066
+    ##             OR  ORlower ORupper
+    ##    1: 0.914375 0.784739 1.06543
+    ##    2: 0.836414 0.298353 2.34483
+    ##    3: 1.067909 0.419177 2.72064
+    ##    4: 1.025644 0.943801 1.11459
+    ##    5: 0.660965 0.263563 1.65757
+    ##   ---                          
+    ## 1487: 0.708297 0.258537 1.94048
+    ## 1488: 0.992471 0.389637 2.52799
+    ## 1489: 0.965598 0.899660 1.03637
+    ## 1490: 0.604507 0.230716 1.58389
+    ## 1491: 0.959758 0.378430 2.43410
 
 Remove some terms from output / include the intercept
 -----------------------------------------------------
@@ -1079,30 +1079,30 @@ Remove some terms from output / include the intercept
     excludeIntercept = FALSE)
 ```
 
-    ##      Variable        Term       Beta StandardError         Z         P
-    ##   1:    gene1 (Intercept)  0.7047723     0.9415451  0.748527 0.4541421
-    ##   2:    gene1       gene1  0.0250101     0.0693388  0.360694 0.7183284
-    ##   3:    gene2 (Intercept) -0.0980783     0.9799530 -0.100085 0.9202771
-    ##   4:    gene2       gene2  0.1300103     0.0921128  1.411425 0.1581193
-    ##   5:    gene3 (Intercept)  0.6467707     0.8186134  0.790081 0.4294806
+    ##      Variable        Term        Beta StandardError         Z        P
+    ##   1:    gene1 (Intercept)  0.78628731     0.8109728  0.969561 0.332266
+    ##   2:    gene1       gene1 -0.08951470     0.0780061 -1.147535 0.251160
+    ##   3:    gene2 (Intercept) -0.16715264     0.9176901 -0.182145 0.855469
+    ##   4:    gene2       gene2  0.02532119     0.0424300  0.596776 0.550657
+    ##   5:    gene3 (Intercept) -0.32213948     0.9068294 -0.355237 0.722412
     ##  ---                                                                  
-    ## 990:  gene495     gene495 -0.1970878     0.1184684 -1.663633 0.0961859
-    ## 991:  gene496 (Intercept)  1.2978794     1.0332048  1.256169 0.2090549
-    ## 992:  gene496     gene496 -0.0324286     0.0563156 -0.575837 0.5647253
-    ## 993:  gene497 (Intercept)  0.4036638     0.9485952  0.425539 0.6704441
-    ## 994:  gene497     gene497  0.0565021     0.0674815  0.837298 0.4024251
+    ## 990:  gene495     gene495  0.01921599     0.0438231  0.438490 0.661031
+    ## 991:  gene496 (Intercept)  0.21695349     1.0596141  0.204748 0.837769
+    ## 992:  gene496     gene496  0.00140682     0.0523487  0.026874 0.978560
+    ## 993:  gene497 (Intercept)  0.80527930     0.8584250  0.938089 0.348199
+    ## 994:  gene497     gene497 -0.03500814     0.0360875 -0.970090 0.332002
     ##            OR  ORlower  ORupper
-    ##   1: 2.023386 0.319620 12.80924
-    ##   2: 1.025325 0.895036  1.17458
-    ##   3: 0.906578 0.132821  6.18789
-    ##   4: 1.138840 0.950728  1.36417
-    ##   5: 1.909365 0.383781  9.49935
+    ##   1: 2.195231 0.447898 10.75924
+    ##   2: 0.914375 0.784739  1.06543
+    ##   3: 0.846070 0.140045  5.11147
+    ##   4: 1.025644 0.943801  1.11459
+    ##   5: 0.724597 0.122519  4.28540
     ##  ---                           
-    ## 990: 0.821119 0.650977  1.03573
-    ## 991: 3.661524 0.483277 27.74134
-    ## 992: 0.968092 0.866923  1.08107
-    ## 993: 1.497301 0.233272  9.61069
-    ## 994: 1.058129 0.927039  1.20776
+    ## 990: 1.019402 0.935499  1.11083
+    ## 991: 1.242286 0.155696  9.91213
+    ## 992: 1.001408 0.903757  1.10961
+    ## 993: 2.237321 0.415945 12.03431
+    ## 994: 0.965598 0.899660  1.03637
 
 ``` r
   # remove everything but the variable being tested
@@ -1140,29 +1140,29 @@ Remove some terms from output / include the intercept
 ```
 
     ##      Variable    Term        Beta StandardError         Z         P
-    ##   1:    gene1   gene1  0.02501007     0.0693388  0.360694 0.7183284
-    ##   2:    gene2   gene2  0.13001026     0.0921128  1.411425 0.1581193
-    ##   3:    gene3   gene3  0.07082819     0.0739883  0.957289 0.3384213
-    ##   4:    gene4   gene4 -0.06816558     0.0658502 -1.035162 0.3005934
-    ##   5:    gene5   gene5  0.12588557     0.1098873  1.145588 0.2519656
+    ##   1:    gene1   gene1 -0.08951470     0.0780061 -1.147535 0.2511605
+    ##   2:    gene2   gene2  0.02532119     0.0424300  0.596776 0.5506569
+    ##   3:    gene3   gene3  0.05425177     0.0649310  0.835529 0.4034198
+    ##   4:    gene4   gene4  0.25288957     0.1426446  1.772865 0.0762511
+    ##   5:    gene5   gene5 -0.03035662     0.0650437 -0.466711 0.6407064
     ##  ---                                                               
-    ## 493:  gene493 gene493  0.36039014     0.2253398  1.599319 0.1097498
-    ## 494:  gene494 gene494  0.00683288     0.0572165  0.119422 0.9049414
-    ## 495:  gene495 gene495 -0.19708783     0.1184684 -1.663633 0.0961859
-    ## 496:  gene496 gene496 -0.03242861     0.0563156 -0.575837 0.5647253
-    ## 497:  gene497 gene497  0.05650209     0.0674815  0.837298 0.4024251
+    ## 493:  gene493 gene493 -0.00109463     0.0448162 -0.024425 0.9805136
+    ## 494:  gene494 gene494 -0.10357685     0.0819173 -1.264408 0.2060837
+    ## 495:  gene495 gene495  0.01921599     0.0438231  0.438490 0.6610312
+    ## 496:  gene496 gene496  0.00140682     0.0523487  0.026874 0.9785603
+    ## 497:  gene497 gene497 -0.03500814     0.0360875 -0.970090 0.3320017
     ##            OR  ORlower ORupper
-    ##   1: 1.025325 0.895036 1.17458
-    ##   2: 1.138840 0.950728 1.36417
-    ##   3: 1.073397 0.928499 1.24091
-    ##   4: 0.934106 0.821002 1.06279
-    ##   5: 1.134152 0.914398 1.40672
+    ##   1: 0.914375 0.784739 1.06543
+    ##   2: 1.025644 0.943801 1.11459
+    ##   3: 1.055750 0.929591 1.19903
+    ##   4: 1.287741 0.973664 1.70313
+    ##   5: 0.970100 0.853987 1.10200
     ##  ---                          
-    ## 493: 1.433889 0.921947 2.23010
-    ## 494: 1.006856 0.900046 1.12634
-    ## 495: 0.821119 0.650977 1.03573
-    ## 496: 0.968092 0.866923 1.08107
-    ## 497: 1.058129 0.927039 1.20776
+    ## 493: 0.998906 0.914907 1.09062
+    ## 494: 0.901607 0.767872 1.05863
+    ## 495: 1.019402 0.935499 1.11083
+    ## 496: 1.001408 0.903757 1.10961
+    ## 497: 0.965598 0.899660 1.03637
 
 Acknowledgments
 ===============
@@ -1201,18 +1201,18 @@ sessionInfo()
     ## [8] methods   base     
     ## 
     ## other attached packages:
-    ##  [1] survminer_0.4.3             ggpubr_0.1.7               
-    ##  [3] ggplot2_3.0.0               biomaRt_2.37.5             
-    ##  [5] bindrcpp_0.2.2              GEOquery_2.49.0            
+    ##  [1] survminer_0.4.3             ggpubr_0.1.8               
+    ##  [3] ggplot2_3.0.0               biomaRt_2.37.9             
+    ##  [5] bindrcpp_0.2.2              GEOquery_2.49.1            
     ##  [7] DESeq2_1.21.10              magrittr_1.5               
     ##  [9] airway_0.115.0              SummarizedExperiment_1.11.5
-    ## [11] DelayedArray_0.7.35         BiocParallel_1.15.12       
+    ## [11] DelayedArray_0.7.48         BiocParallel_1.15.12       
     ## [13] matrixStats_0.54.0          Biobase_2.41.2             
-    ## [15] GenomicRanges_1.33.13       GenomeInfoDb_1.17.1        
-    ## [17] IRanges_2.15.17             S4Vectors_0.19.19          
+    ## [15] GenomicRanges_1.33.14       GenomeInfoDb_1.17.4        
+    ## [17] IRanges_2.15.18             S4Vectors_0.19.22          
     ## [19] BiocGenerics_0.27.1         RegParallel_0.99.0         
     ## [21] arm_1.10-1                  lme4_1.1-18-1              
-    ## [23] Matrix_1.2-14               MASS_7.3-50                
+    ## [23] Matrix_1.2-14               MASS_7.3-51                
     ## [25] survival_2.42-6             stringr_1.3.1              
     ## [27] data.table_1.11.6           doParallel_1.0.14          
     ## [29] iterators_1.0.10            foreach_1.4.4              
@@ -1220,34 +1220,34 @@ sessionInfo()
     ## 
     ## loaded via a namespace (and not attached):
     ##  [1] minqa_1.2.4            colorspace_1.3-2       rprojroot_1.3-2       
-    ##  [4] htmlTable_1.12         XVector_0.21.3         base64enc_0.1-3       
+    ##  [4] htmlTable_1.12         XVector_0.21.4         base64enc_0.1-3       
     ##  [7] rstudioapi_0.7         bit64_0.9-7            AnnotationDbi_1.43.1  
     ## [10] xml2_1.2.0             codetools_0.2-15       splines_3.5.1         
-    ## [13] geneplotter_1.59.0     Formula_1.2-3          nloptr_1.0.4          
+    ## [13] geneplotter_1.59.0     Formula_1.2-3          nloptr_1.2.1          
     ## [16] broom_0.5.0            km.ci_0.5-2            annotate_1.59.0       
     ## [19] cluster_2.0.7-1        readr_1.1.1            compiler_3.5.1        
     ## [22] httr_1.3.1             backports_1.1.2        assertthat_0.2.0      
     ## [25] lazyeval_0.2.1         limma_3.37.3           acepack_1.4.1         
     ## [28] htmltools_0.3.6        prettyunits_1.0.2      tools_3.5.1           
-    ## [31] coda_0.19-1            gtable_0.2.0           glue_1.3.0            
-    ## [34] GenomeInfoDbData_1.1.0 dplyr_0.7.6            Rcpp_0.12.18          
+    ## [31] coda_0.19-2            gtable_0.2.0           glue_1.3.0            
+    ## [34] GenomeInfoDbData_1.2.0 dplyr_0.7.7            Rcpp_0.12.19          
     ## [37] nlme_3.1-137           XML_3.98-1.16          zlibbioc_1.27.0       
-    ## [40] zoo_1.8-3              scales_1.0.0           hms_0.4.2             
+    ## [40] zoo_1.8-4              scales_1.0.0           hms_0.4.2             
     ## [43] RColorBrewer_1.1-2     yaml_2.2.0             curl_3.2              
     ## [46] memoise_1.1.0          gridExtra_2.3          KMsurv_0.1-5          
     ## [49] rpart_4.1-13           latticeExtra_0.6-28    stringi_1.2.4         
     ## [52] RSQLite_2.1.1          highr_0.7              genefilter_1.63.0     
-    ## [55] checkmate_1.8.5        rlang_0.2.2            pkgconfig_2.0.1       
-    ## [58] bitops_1.0-6           evaluate_0.11          lattice_0.20-35       
+    ## [55] checkmate_1.8.5        rlang_0.3.0            pkgconfig_2.0.1       
+    ## [58] bitops_1.0-6           evaluate_0.12          lattice_0.20-35       
     ## [61] purrr_0.2.5            bindr_0.1.1            htmlwidgets_1.2       
     ## [64] labeling_0.3           cmprsk_2.2-7           bit_1.1-14            
-    ## [67] tidyselect_0.2.4       plyr_1.8.4             R6_2.2.2              
+    ## [67] tidyselect_0.2.5       plyr_1.8.4             R6_2.2.2              
     ## [70] Hmisc_4.1-1            DBI_1.0.0              pillar_1.3.0          
     ## [73] foreign_0.8-70         withr_2.1.2            abind_1.4-5           
     ## [76] RCurl_1.95-4.11        nnet_7.3-12            tibble_1.4.2          
     ## [79] crayon_1.3.4           survMisc_0.5.5         rmarkdown_1.10        
     ## [82] progress_1.2.0         locfit_1.5-9.1         grid_3.5.1            
-    ## [85] blob_1.1.1             digest_0.6.16          xtable_1.8-2          
+    ## [85] blob_1.1.1             digest_0.6.18          xtable_1.8-2          
     ## [88] tidyr_0.8.1            munsell_0.5.0
 
 References

@@ -100,6 +100,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 500,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "none",
     conflevel = 95,
     excludeTerms = NULL,
     excludeIntercept = FALSE

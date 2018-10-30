@@ -102,6 +102,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 399,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "none",
     conflevel = 97.5,
     excludeTerms = c('group', 'cell'),
     excludeIntercept = FALSE

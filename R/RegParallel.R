@@ -7,6 +7,7 @@ RegParallel <- function(
   blocksize = 500,
   cores = 3,
   nestedParallel = FALSE,
+  p.adjust = "none",
   conflevel = 95,
   excludeTerms = NULL,
   excludeIntercept = TRUE)
@@ -127,6 +128,12 @@ RegParallel <- function(
       }
     }
   #########
+
+  # check that a valid p.adjust entry exists
+  if (grepl("^holm$|^hochberg$|^hommel$|^bonferroni$|^BH$|^BY$|^fdr$|^none$", p.adjust) == FALSE) {
+    stop('p.adjust value not valid! ',
+      'See ?p.adjust for possible values')
+  }
 
   # 'left align' the terms in the input data
   data <- cbind(data[,which(colnames(data) %in% c(terms))], data[,which(colnames(data) %in% c(variables))])
@@ -252,6 +259,18 @@ RegParallel <- function(
       conflevel = conflevel,
       excludeTerms = excludeTerms,
       excludeIntercept = excludeIntercept)
+  }
+
+  # p-value adjustment
+  if (p.adjust != 'none') {
+    if ((FUNtype == 'coxph') || (FUNtype == 'clogit')) {
+      res$P.adjust <- p.adjust(res$P, p.adjust)
+      res$LRT.adjust <- p.adjust(res$LRT, p.adjust)
+      res$Wald.adjust <- p.adjust(res$Wald, p.adjust)
+      res$LogRank.adjust <- p.adjust(res$LogRank, p.adjust)
+    } else {
+      res$P.adjust <- p.adjust(res$P, p.adjust)
+    }
   }
 
   # a sanity / integrity check - this code should never be executed

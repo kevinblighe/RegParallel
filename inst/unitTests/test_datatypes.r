@@ -5,7 +5,7 @@ test_that('datatypes', {
         c('language'))
     expect_type(RegParallel(FUN),
         c('closure'))
-    expect_type(RegParallel(FUNtype, variables, excludeTerms),
+    expect_type(RegParallel(FUNtype, variables, p.adjust, excludeTerms),
         c('language', 'character'))
     expect_type(RegParallel(blocksize, cores, conflevel),
         c('integer'))

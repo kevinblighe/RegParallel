@@ -20,6 +20,7 @@ RegParallel(
   blocksize = 500,
   cores = 3,
   nestedParallel = FALSE,
+  p.adjust = 'none',
   conflevel = 95,
   excludeTerms = NULL,
   excludeIntercept = TRUE)
@@ -47,6 +48,9 @@ RegParallel(
   If nestedParallel is enabled, a second level of parallelisation occurs
   within each block in addition. Warning! - this doubles the usage of cores.
   DEFAULT = FALSE. OPTIONAL.}
+  \item{p.adjust}{Method for adjusting p-values for false discovery rate. Must
+  be one of 'holm', 'hochberg', 'hommel', 'bonferroni', 'BH', 'BY', 'fdr',
+  'none'. See ?p.adjust for further details. DEFAULT = 'none'. OPTIONAL}
   \item{conflevel}{Confidence level for calculating odds or hazard ratios.
   DEFAULT = 95. OPTIONAL.}
   \item{excludeTerms}{Remove these terms from the final output. These will
@@ -102,6 +106,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 700,
     cores = 2,
     nestedParallel = TRUE,
+    #p.adjust = "bonferroni",
     conflevel = 99,
     excludeTerms = NULL,
     excludeIntercept = TRUE
@@ -137,6 +142,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 496,
     cores = 2,
     nestedParallel = TRUE,
+    p.adjust = "none",
     conflevel = 90,
     excludeTerms = NULL,
     excludeIntercept = FALSE
@@ -165,6 +171,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 200,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "holm",
     conflevel = 99.999,
     excludeTerms = NULL,
     excludeIntercept = FALSE
@@ -199,6 +206,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 399,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "hommel",
     conflevel = 97.5,
     excludeTerms = c('group', 'cell'),
     excludeIntercept = FALSE
@@ -207,12 +215,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   # spot checks
   m <- coxph(formula = Surv(time, as.integer(alive)) ~ group * gene12 + cell, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
-  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.975)))
+  exp(cbind("Hazards ratio" = coef(m), confint.default(m, level = 0.975)))
   res4[which(res4$Variable == 'gene12'),]
 
   m <- coxph(formula = Surv(time, as.integer(alive)) ~ group * gene267 + cell, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
-  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.975)))
+  exp(cbind("Hazards ratio" = coef(m), confint.default(m, level = 0.975)))
   res4[which(res4$Variable == 'gene267'),]
 
 
@@ -234,6 +242,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 200,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "fdr",
     conflevel = 50,
     excludeTerms = 'non-existent term',
     excludeIntercept = FALSE
@@ -242,12 +251,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   # spot checks
   m <- clogit(formula = as.integer(factor(group)) ~ gene145 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
-  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.5)))
+  exp(cbind("Hazards ratio" = coef(m), confint.default(m, level = 0.5)))
   res5[which(res5$Variable == 'gene145'),]
 
   m <- clogit(formula = as.integer(factor(group)) ~ gene34 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
-  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.5)))
+  exp(cbind("Hazards ratio" = coef(m), confint.default(m, level = 0.5)))
   res5[which(res5$Variable == 'gene34'),]
 
 
@@ -268,6 +277,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 500,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "fdr",
     conflevel = 99,
     excludeTerms = NULL,
     excludeIntercept = FALSE
@@ -302,6 +312,7 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
     blocksize = 500,
     cores = 2,
     nestedParallel = FALSE,
+    p.adjust = "BY",
     conflevel = 95,
     excludeTerms = NULL,
     excludeIntercept = FALSE

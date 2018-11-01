@@ -164,7 +164,9 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 
     FUNtype = 'glm',
 
-    variables = colnames(rlogdata)[10:ncol(rlogdata)])
+    variables = colnames(rlogdata)[10:ncol(rlogdata)],
+
+    p.adjust = "none")
 
 
   res3 <- RegParallel(
@@ -181,7 +183,9 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 
     FUNtype = 'lm',
 
-    variables = colnames(rlogdata)[10:ncol(rlogdata)])
+    variables = colnames(rlogdata)[10:ncol(rlogdata)],
+
+    p.adjust = "none")
 
   subset(res2, P<0.05)
 
@@ -217,7 +221,9 @@ distribution. <i>glm.nbParallel</i> will be used.
 
       FUNtype = 'glm.nb',
 
-      variables = colnames(nbdata)[10:3000])
+      variables = colnames(nbdata)[10:3000],
+
+    p.adjust = "fdr")
 
     res4[order(res4$Theta, decreasing = TRUE),]
 
@@ -333,7 +339,9 @@ up the analysis.
 
     variables = colnames(coxdata)[9:ncol(coxdata)],
 
-    blocksize = 2000)
+    blocksize = 2000,
+
+    p.adjust = "BH")
 
   res5 <- res5[!is.na(res5$P),]
 
@@ -646,7 +654,9 @@ enabled, a total of  2 x 2 = 4 threads will be used.
 
     cores = 2,
 
-    nestedParallel = TRUE)
+    nestedParallel = TRUE,
+
+    p.adjust = "BY")
 
   proc.time() - ptm
 
@@ -686,7 +696,9 @@ enabled, a total of  2 x 2 = 4 threads will be used.
 
     cores = 2,
 
-    nestedParallel = FALSE)
+    nestedParallel = FALSE,
+
+    p.adjust = "BY")
 
   proc.time() - ptm
 

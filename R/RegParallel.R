@@ -56,7 +56,7 @@ RegParallel <- function(
   # blocksize cannot be greater than number of variables to test
   # throw an error if so
   if (blocksize > length(variables)) {
-    stop('blocksize is greater than number of variables to test.',
+    stop('blocksize is greater than number of variables to test. ',
       'Choose a smaller blocksize',
       call. = FALSE)
   }

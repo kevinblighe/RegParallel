@@ -51,9 +51,7 @@ regression, and negative binomial regression.
 ```{r getPackage, eval=FALSE}
 
     if (!requireNamespace('BiocManager', quietly = TRUE))
-
         install.packages('BiocManager')
-
         BiocManager::install('RegParallel')
 
 ```
@@ -85,11 +83,9 @@ with dexamethasone.
 ```{r}
 
     library(airway)
-
     library(magrittr)
 
     data('airway')
-
     airway$dex %<>% relevel('untrt')
 
 ```
@@ -101,11 +97,8 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
     library(DESeq2)
 
     dds <- DESeqDataSet(airway, design = ~ dex + cell)
-
     dds <- DESeq(dds, betaPrior = FALSE)
-
     rlogcounts <- assay(rlog(dds, blind = FALSE))
-
     rlogdata <- data.frame(colData(airway), t(rlogcounts))
 
 ```
@@ -118,21 +111,13 @@ with dexamethasone as the dependent variable.
 ```{r glmParallel1}
 
     res1 <- RegParallel(
-
       data = rlogdata[ ,1:3000],
-
       formula = 'dex ~ [*]',
-
       FUN = function(formula, data)
-
         glm(formula = formula,
-
           data = data,
-
           family = binomial(link = 'logit')),
-
       FUNtype = 'glm',
-
       variables = colnames(rlogdata)[10:3000])
 
     res1[order(res1$P, decreasing=FALSE),]
@@ -152,46 +137,27 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
   rlogdata <- rlogdata[ ,1:2000]
 
   res2 <- RegParallel(
-
     data = rlogdata,
-
     formula = '[*] ~ cell',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = colnames(rlogdata)[10:ncol(rlogdata)],
-
     p.adjust = "none")
 
-
   res3 <- RegParallel(
-
     data = rlogdata,
-
     formula = '[*] ~ cell',
-
     FUN = function(formula, data)
-
       lm(formula = formula,
-
         data = data),
-
     FUNtype = 'lm',
-
     variables = colnames(rlogdata)[10:ncol(rlogdata)],
-
     p.adjust = "none")
 
   subset(res2, P<0.05)
-
   subset(res3, P<0.05)
 
 ```
@@ -207,25 +173,16 @@ distribution. <i>glm.nbParallel</i> will be used.
 ```{r glm.nbParallel1}
 
     nbcounts <- round(counts(dds, normalized = TRUE), 0)
-
     nbdata <- data.frame(colData(airway), t(nbcounts))
 
     res4 <- RegParallel(
-
       data = nbdata[ ,1:3000],
-
       formula = '[*] ~ dex',
-
       FUN = function(formula, data)
-
         glm.nb(formula = formula,
-
           data = data),
-
       FUNtype = 'glm.nb',
-
       variables = colnames(nbdata)[10:3000],
-
     p.adjust = "fdr")
 
     res4[order(res4$Theta, decreasing = TRUE),]
@@ -267,15 +224,11 @@ First, let's read in and prepare the data
 
   # extract information of interest from the phenotype data (pdata)
   idx <- which(colnames(pData(gset[[1]])) %in%
-
     c('age:ch1', 'distant rfs:ch1', 'er:ch1',
-
       'ggi:ch1', 'grade:ch1', 'node:ch1',
-
       'size:ch1', 'time rfs:ch1'))
 
   metadata <- data.frame(pData(gset[[1]])[,idx],
-
     row.names = rownames(pData(gset[[1]])))
 
   # remove samples from the pdata that have any NA value
@@ -294,20 +247,14 @@ First, let's read in and prepare the data
 
   # tidy column names
   colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
-
     'GGI', 'Grade', 'Node',
-
     'Size', 'Time.RFS')
 
   # prepare certain phenotypes
   coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
-
   coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
-
   coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
-
   coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
-
   coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
 
 ```
@@ -323,31 +270,19 @@ up the analysis.
   library(survival)
 
   res5 <- RegParallel(
-
     data = coxdata,
-
     formula = 'Surv(Time.RFS, Distant.RFS) ~ [*]',
-
     FUN = function(formula, data)
-
       coxph(formula = formula,
-
         data = data,
-
         ties = 'breslow',
-
         singular.ok = TRUE),
-
     FUNtype = 'coxph',
-
     variables = colnames(coxdata)[9:ncol(coxdata)],
-
     blocksize = 2000,
-
     p.adjust = "BH")
 
   res5 <- res5[!is.na(res5$P),]
-
   res5
 
 ```
@@ -358,31 +293,19 @@ We now take the top probes from the model by Log Rank p-value and use
 ```{r coxphParallel3}
 
   res5 <- res5[order(res5$LogRank, decreasing = FALSE),]
-
   final <- subset(res5, LogRank < 0.01)
-
   probes <- gsub('^X', '', final$Variable)
 
   library(biomaRt)
-
   mart <- useMart('ENSEMBL_MART_ENSEMBL')
-
   mart <- useDataset("hsapiens_gene_ensembl", mart)
-
   annotLookup <- getBM(mart = mart,
-
     attributes = c('affy_hg_u133a',
-
       'ensembl_gene_id',
-
       'gene_biotype',
-
       'external_gene_name'),
-
     filter = 'affy_hg_u133a',
-
     values = probes,
-
     uniqueRows = TRUE)
 
 ```
@@ -402,34 +325,24 @@ gene expression Z-scores into tertiles for low, mid, and high expression:
 
   # extract RFS and probe data for downstream analysis
   survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
-
     'X203666_at', 'X205680_at')]
-
   colnames(survplotdata) <- c('Time.RFS', 'Distant.RFS',
-
     'CXCL12', 'MMP10')
 
   # set Z-scale cut-offs for high and low expression
   highExpr <- 1.0
-
   lowExpr <- 1.0
 
   # encode the expression for CXCL12 and MMP10 as low, mid, and high
   survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, 'High',
-
     ifelse(x <= lowExpr, 'Low', 'Mid'))
-
   survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, 'High',
-
     ifelse(x <= lowExpr, 'Low', 'Mid'))
 
   # relevel the factors to have mid as the reference level
   survplotdata$CXCL12 <- factor(survplotdata$CXCL12,
-
     levels = c('Mid', 'Low', 'High'))
-
   survplotdata$MMP10 <- factor(survplotdata$MMP10,
-
     levels = c('Mid', 'Low', 'High'))
 
 ```
@@ -441,39 +354,23 @@ Plot the survival curves and place Log Rank p-value in the plots:
   library(survminer)
 
   ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12,
-
     data = survplotdata),
-
     data = survplotdata,
-
     risk.table = TRUE,
-
     pval = TRUE,
-
     break.time.by = 500,
-
     ggtheme = theme_minimal(),
-
     risk.table.y.text.col = TRUE,
-
     risk.table.y.text = FALSE)
 
   ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ MMP10,
-
     data = survplotdata),
-
     data = survplotdata,
-
     risk.table = TRUE,
-
     pval = TRUE,
-
     break.time.by = 500,
-
     ggtheme = theme_minimal(),
-
     risk.table.y.text.col = TRUE,
-
     risk.table.y.text = FALSE)
 
 
@@ -489,73 +386,45 @@ also adjust for age.
 ```{r clogitParallel}
 
   x <- exprs(gset[[1]])
-
   x <- x[-grep('^AFFX', rownames(x)),]
-
   x <- scale(x)
-
   x <- x[,which(colnames(x) %in% rownames(metadata))]
 
   coxdata <- data.frame(metadata, t(x))
 
   colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
-
     'GGI', 'Grade', 'Node',
-
     'Size', 'Time.RFS')
 
   coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
-
   coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
-
   coxdata$ER <- as.numeric(coxdata$ER)
-
   coxdata <- coxdata[!is.na(coxdata$ER),]
 
   res6 <- RegParallel(
-
     data = coxdata,
-
     formula = 'ER ~ [*] + Age + strata(Grade)',
-
     FUN = function(formula, data)
-
       clogit(formula = formula,
-
         data = data,
-
         method = 'breslow'),
-
     FUNtype = 'clogit',
-
     variables = colnames(coxdata)[9:ncol(coxdata)],
-
     blocksize = 2000)
 
   subset(res6, P < 0.01)
 
   getBM(mart = mart,
-
     attributes = c('affy_hg_u133a',
-
       'ensembl_gene_id',
-
       'gene_biotype',
-
       'external_gene_name'),
-
     filter = 'affy_hg_u133a',
-
     values = c('204667_at',
-
       '205225_at',
-
       '207813_s_at',
-
       '212108_at',
-
       '219497_s_at'),
-
     uniqueRows=TRUE)
 
 ```
@@ -586,18 +455,13 @@ First create some test data for the purpose of benchmarking:
 ```{r speedup1}
 
   options(scipen=10)
-
   options(digits=6)
 
   # create a data-matrix of 20 x 60000 (rows x cols) random numbers
   col <- 60000
-
   row <- 20
-
   mat <- matrix(
-
     rexp(col*row, rate = .1),
-
     ncol = col)
 
   # add fake gene and sample names
@@ -607,15 +471,10 @@ First create some test data for the purpose of benchmarking:
 
   # add some fake metadata
   modelling <- data.frame(
-
     cell = rep(c('B', 'T'), nrow(mat) / 2),
-
     group = c(rep(c('treatment'), nrow(mat) / 2), rep(c('control'), nrow(mat) / 2)),
-
     dosage = t(data.frame(matrix(rexp(row, rate = 1), ncol = row))),
-
     mat,
-
     row.names = rownames(mat))
 
 ```
@@ -628,37 +487,23 @@ enabled, a total of  2 x 2 = 4 threads will be used.
 ```{r speedup2}
 
   df <- modelling[ ,1:2000]
-
   variables <- colnames(df)[4:ncol(df)]
 
   ptm <- proc.time()
 
   res <- RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 500,
-
     cores = 2,
-
     nestedParallel = TRUE,
-
     p.adjust = "BY")
 
   proc.time() - ptm
@@ -670,37 +515,23 @@ enabled, a total of  2 x 2 = 4 threads will be used.
 ```{r speedup3}
 
   df <- modelling[ ,1:2000]
-
   variables <- colnames(df)[4:ncol(df)]
 
   ptm <- proc.time()
 
   res <- RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 500,
-
     cores = 2,
-
     nestedParallel = FALSE,
-
     p.adjust = "BY")
 
   proc.time() - ptm
@@ -719,33 +550,20 @@ benefits can only be gained when processing a large number of variables:
 ```{r speedup4}
 
   df <- modelling[ ,1:40000]
-
   variables <- colnames(df)[4:ncol(df)]
 
   system.time(RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 2000,
-
     cores = 2,
-
     nestedParallel = TRUE))
 
 ```
@@ -758,29 +576,17 @@ benefits can only be gained when processing a large number of variables:
   variables <- colnames(df)[4:ncol(df)]
 
   system.time(RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 2000,
-
     cores = 2,
-
     nestedParallel = FALSE))
 
 ```
@@ -800,29 +606,17 @@ enabled, this translates to 9 simultaneous threads.
   variables <- colnames(df)[4:ncol(df)]
 
   system.time(RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 5000,
-
     cores = 3,
-
     nestedParallel = TRUE))
 
 ```
@@ -836,60 +630,34 @@ enabled, this translates to 9 simultaneous threads.
 
   # 99% confidfence intervals
   RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 150,
-
     cores = 3,
-
     nestedParallel = TRUE,
-
     conflevel = 99)
 
   # 95% confidfence intervals (default)
   RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 150,
-
     cores = 3,
-
     nestedParallel = TRUE,
-
     conflevel = 95)
 
 ```
@@ -901,68 +669,38 @@ enabled, this translates to 9 simultaneous threads.
 
   # remove terms but keep Intercept
   RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 150,
-
     cores = 3,
-
     nestedParallel = TRUE,
-
     conflevel = 95,
-
     excludeTerms = c('cell', 'dosage'),
-
     excludeIntercept = FALSE)
 
   # remove everything but the variable being tested
   RegParallel(
-
     data = df,
-
     formula = 'factor(group) ~ [*] + (cell:dosage) ^ 2',
-
     FUN = function(formula, data)
-
       glm(formula = formula,
-
         data = data,
-
         family = binomial(link = 'logit'),
-
         method = 'glm.fit'),
-
     FUNtype = 'glm',
-
     variables = variables,
-
     blocksize = 150,
-
     cores = 3,
-
     nestedParallel = TRUE,
-
     conflevel = 95,
-
     excludeTerms = c('cell', 'dosage'),
-
     excludeIntercept = TRUE)
 
 ```

@@ -204,177 +204,9 @@ Specifically, we will encode each gene's expression into Low|Mid|High based
 on Z-scores and compare these against RFS while adjusting for tumour
 grade in a Cox Proportional Hazards model.
 
-First, let's read in and prepare the data
+NB - the tutorial for this section can be found in my Biostars post: [Tutorial: Survival analysis with gene expression
+](https://www.biostars.org/p/344233/)
 
-```{r coxphParallel1}
-  library(Biobase)
-
-  library(GEOquery)
-
-  # load series and platform data from GEO
-  gset <- getGEO('GSE2990', GSEMatrix =TRUE, getGPL=FALSE)
-
-  x <- exprs(gset[[1]])
-
-  # remove Affymetrix control probes
-  x <- x[-grep('^AFFX', rownames(x)),]
-
-  # transform the expression data to Z scores
-  x <- t(scale(t(x)))
-
-  # extract information of interest from the phenotype data (pdata)
-  idx <- which(colnames(pData(gset[[1]])) %in%
-    c('age:ch1', 'distant rfs:ch1', 'er:ch1',
-      'ggi:ch1', 'grade:ch1', 'node:ch1',
-      'size:ch1', 'time rfs:ch1'))
-
-  metadata <- data.frame(pData(gset[[1]])[,idx],
-    row.names = rownames(pData(gset[[1]])))
-
-  # remove samples from the pdata that have any NA value
-  discard <- apply(metadata, 1, function(x) any(is.na(x)))
-
-  metadata <- metadata[!discard,]
-
-  # filter the Z-scores expression data to match the samples in our pdata
-  x <- x[,which(colnames(x) %in% rownames(metadata))]
-
-  # check that sample names match exactly between pdata and Z-scores 
-  all((colnames(x) == rownames(metadata)) == TRUE)
-
-  # create a merged pdata and Z-scores object
-  coxdata <- data.frame(metadata, t(x))
-
-  # tidy column names
-  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
-    'GGI', 'Grade', 'Node',
-    'Size', 'Time.RFS')
-
-  # prepare certain phenotypes
-  coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
-  coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
-  coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
-  coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
-  coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
-
-```
-
-With the data prepared, we can now apply a Cox Proportional Hazards model
-independently for each probe in the dataset against RFS.
-
-In this we also increase the default blocksize to 2000 in order to speed
-up the analysis.
-
-```{r coxphParallel2}
-
-  library(survival)
-
-  res5 <- RegParallel(
-    data = coxdata,
-    formula = 'Surv(Time.RFS, Distant.RFS) ~ [*]',
-    FUN = function(formula, data)
-      coxph(formula = formula,
-        data = data,
-        ties = 'breslow',
-        singular.ok = TRUE),
-    FUNtype = 'coxph',
-    variables = colnames(coxdata)[9:ncol(coxdata)],
-    blocksize = 2000,
-    p.adjust = "BH")
-
-  res5 <- res5[!is.na(res5$P),]
-  res5
-
-```
-
-We now take the top probes from the model by Log Rank p-value and use
-<i>biomaRt</i> to look up the corresponding gene symbols.
-
-```{r coxphParallel3}
-
-  res5 <- res5[order(res5$LogRank, decreasing = FALSE),]
-  final <- subset(res5, LogRank < 0.01)
-  probes <- gsub('^X', '', final$Variable)
-
-  library(biomaRt)
-  mart <- useMart('ENSEMBL_MART_ENSEMBL')
-  mart <- useDataset("hsapiens_gene_ensembl", mart)
-  annotLookup <- getBM(mart = mart,
-    attributes = c('affy_hg_u133a',
-      'ensembl_gene_id',
-      'gene_biotype',
-      'external_gene_name'),
-    filter = 'affy_hg_u133a',
-    values = probes,
-    uniqueRows = TRUE)
-
-```
-
-Two of the top hits include <i>CXCL12</i> and <i>MMP10</i>. High expression of
-<i>CXCL12</i> was previously associated with good progression free and overall
-survival in breast cancer in
-(doi: 10.1016/j.cca.2018.05.041.)[https://www.ncbi.nlm.nih.gov/pubmed/29800557]
-, whilst high expression of <i>MMP10</i> was associated with poor prognosis in
-colon cancer in
-(doi:  10.1186/s12885-016-2515-7)[https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4950722/].
-
-We can further explore the role of these genes to RFS by dividing their
-gene expression Z-scores into tertiles for low, mid, and high expression:
-
-```{r coxphParallel4}
-
-  # extract RFS and probe data for downstream analysis
-  survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
-    'X203666_at', 'X205680_at')]
-  colnames(survplotdata) <- c('Time.RFS', 'Distant.RFS',
-    'CXCL12', 'MMP10')
-
-  # set Z-scale cut-offs for high and low expression
-  highExpr <- 1.0
-  lowExpr <- 1.0
-
-  # encode the expression for CXCL12 and MMP10 as low, mid, and high
-  survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, 'High',
-    ifelse(x <= lowExpr, 'Low', 'Mid'))
-  survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, 'High',
-    ifelse(x <= lowExpr, 'Low', 'Mid'))
-
-  # relevel the factors to have mid as the reference level
-  survplotdata$CXCL12 <- factor(survplotdata$CXCL12,
-    levels = c('Mid', 'Low', 'High'))
-  survplotdata$MMP10 <- factor(survplotdata$MMP10,
-    levels = c('Mid', 'Low', 'High'))
-
-```
-
-Plot the survival curves and place Log Rank p-value in the plots:
-
-```{r coxphParallel5, fig.height = 6, fig.width = 6, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
-
-  library(survminer)
-
-  ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12,
-    data = survplotdata),
-    data = survplotdata,
-    risk.table = TRUE,
-    pval = TRUE,
-    break.time.by = 500,
-    ggtheme = theme_minimal(),
-    risk.table.y.text.col = TRUE,
-    risk.table.y.text = FALSE)
-
-  ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ MMP10,
-    data = survplotdata),
-    data = survplotdata,
-    risk.table = TRUE,
-    pval = TRUE,
-    break.time.by = 500,
-    ggtheme = theme_minimal(),
-    risk.table.y.text.col = TRUE,
-    risk.table.y.text = FALSE)
-
-
-```
 
 ## Perform a conditional logistic regression
 
@@ -383,7 +215,7 @@ conditional logistic regression with tumour grade as our grouping / matching
 factor. For this example, we will use ER status as the dependent variable and
 also adjust for age.
 
-```{r clogitParallel}
+```{r clogitParallel, eval = FALSE}
 
   x <- exprs(gset[[1]])
   x <- x[-grep('^AFFX', rownames(x)),]
@@ -433,13 +265,6 @@ Oestrogen receptor (<i>ESR1</i>) comes out top - makes sense! Also, although
 204667_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>,
 which also makes sense in relation to oestrogen signalling.
 
-
-```{r, echo=FALSE}
-
-  rm(coxdata, data, x, gset, survplotdata, highExpr, lowExpr,
-    annotLookup, mart, final, probes, idx)
-
-```
 
 # Advanced features
 

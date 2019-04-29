@@ -26,11 +26,7 @@ Suggests:
   knitr,
   DESeq2,
   airway,
-  magrittr,
-  Biobase,
-  GEOquery,
-  biomaRt,
-  survminer
+  magrittr
 URL: https://github.com/kevinblighe/RegParallel
 biocViews: DiseaseModel
 VignetteBuilder:

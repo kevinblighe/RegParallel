@@ -60,7 +60,7 @@ RegParallel(
 }
 
 \details{
-In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major bottleneck in these is the amount of time that it takes to complete these analyses. With RegParallel, a large number of tests can be performed simultaneously. On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing. Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, Bayesian logistic regression, and negative binomial regression.
+In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major bottleneck in these is the amount of time that it takes to complete these analyses. With RegParallel, a large number of tests can be performed simultaneously. On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing. Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, and Bayesian logistic regression.
 }
 
 \value{
@@ -293,39 +293,4 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.99)))
   res6[which(res6$Variable == 'gene3664'),]
-
-
-  ###
-
-
-  data <- modelling[,1:5000]
-  data[,4:ncol(data)] <- asinh(scale(data[,4:ncol(data)]))
-  variables <- colnames(data)[4:ncol(data)]
-  res7 <- RegParallel(
-    data = data,
-    formula = 'as.numeric(factor(cell)) ~ [*] + group * dosage',
-    FUN = function(formula, data)
-      glm.nb(formula = formula,
-        data = data),
-    FUNtype = 'glm.nb',
-    variables = variables,
-    blocksize = 500,
-    cores = 2,
-    nestedParallel = FALSE,
-    p.adjust = "BY",
-    conflevel = 95,
-    excludeTerms = NULL,
-    excludeIntercept = FALSE
-  )
-
-  # spot checks
-  m <- glm.nb(formula = as.numeric(factor(cell)) ~ gene99 + group * dosage, data = data)
-  summary(m)
-  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.95)))
-  res7[which(res7$Variable == 'gene99'),]
-
-  m <- glm.nb(formula = as.numeric(factor(cell)) ~ gene2000 + group * dosage, data = data)
-  summary(m)
-  exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.95)))
-  res7[which(res7$Variable == 'gene2000'),]
 }

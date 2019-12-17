@@ -171,9 +171,9 @@ RegParallel <- function(
   }
 
   # detect if incorrect FUNtype selected
-  if (!any((FUNtype %in% c('glm', 'lm', 'coxph', 'clogit', 'bayesglm', 'glm.nb')) == TRUE)) {
+  if (!any((FUNtype %in% c('glm', 'lm', 'coxph', 'clogit', 'bayesglm')) == TRUE)) {
     stop('FUNtype not recognised. Choose one of glm, lm, coxph, ',
-      'clogit, bayesglm, or glm.nb')
+      'clogit, or bayesglm')
   }
 
   # identify FUNtype and launch relevant function
@@ -233,20 +233,6 @@ RegParallel <- function(
       excludeTerms = excludeTerms)
   } else if (FUNtype == 'bayesglm') {
     res <- bayesglmParallel(
-      data = data,
-      formula.list = formula.list,
-      FUN = FUN,
-      variables = variables,
-      terms = terms,
-      startIndex = startIndex,
-      blocksize = blocksize,
-      blocks = blocks,
-      APPLYFUN = APPLYFUN,
-      conflevel = conflevel,
-      excludeTerms = excludeTerms,
-      excludeIntercept = excludeIntercept)
-  } else if (FUNtype == 'glm.nb') {
-    res <- glm.nbParallel(
       data = data,
       formula.list = formula.list,
       FUN = FUN,

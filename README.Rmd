@@ -29,8 +29,8 @@ simultaneously, with 1000s of variables processed in a matter of seconds
 via 'nested' parallel processing.
 
 Works for logistic regression, linear regression, conditional logistic
-regression, Cox proportional hazards and survival models, Bayesian logistic
-regression, and negative binomial regression.
+regression, Cox proportional hazards and survival models, and Bayesian logistic
+regression.
 
 
 ```{r, echo=FALSE}
@@ -49,7 +49,8 @@ regression, and negative binomial regression.
 
     if (!requireNamespace('BiocManager', quietly = TRUE))
         install.packages('BiocManager')
-        BiocManager::install('RegParallel')
+
+    BiocManager::install('RegParallel')
 
 ```
 
@@ -87,7 +88,7 @@ with dexamethasone.
 
 ```
 
-Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
+Normalise the raw counts in <i>DESeq2</i> and produce regularised log expression levels:
 
 ```{r}
 
@@ -95,8 +96,8 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 
     dds <- DESeqDataSet(airway, design = ~ dex + cell)
     dds <- DESeq(dds, betaPrior = FALSE)
-    rlogcounts <- assay(rlog(dds, blind = FALSE))
-    rlogdata <- data.frame(colData(airway), t(rlogcounts))
+    rldexpr <- assay(rlog(dds, blind = FALSE))
+    rlddata <- data.frame(colData(airway), t(rldexpr))
 
 ```
 
@@ -105,17 +106,20 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log counts:
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>,
 with dexamethasone as the dependent variable.
 
-```{r glmParallel1}
+
+```{r glmParallel1, echo = TRUE, eval = FALSE}
+
+    ## NOT RUN
 
     res1 <- RegParallel(
-      data = rlogdata[ ,1:3000],
+      data = rlddata[ ,1:3000],
       formula = 'dex ~ [*]',
       FUN = function(formula, data)
         glm(formula = formula,
           data = data,
           family = binomial(link = 'logit')),
       FUNtype = 'glm',
-      variables = colnames(rlogdata)[10:3000])
+      variables = colnames(rlddata)[10:3000])
 
     res1[order(res1$P, decreasing=FALSE),]
 
@@ -127,31 +131,31 @@ Here, we will perform the linear regression using both <i>glmParallel</i> and
 <i>lmParallel</i>. We will appreciate that a linear regression is the same
 using either function with the default settings.
 
-Regularised log counts from our <i>DESeq2</i> data will be used.
+Regularised log expression levels from our <i>DESeq2</i> data will be used.
 
 ```{r lmParallel1}
 
-  rlogdata <- rlogdata[ ,1:2000]
+  rlddata <- rlddata[ ,1:2000]
 
   res2 <- RegParallel(
-    data = rlogdata,
+    data = rlddata,
     formula = '[*] ~ cell',
     FUN = function(formula, data)
       glm(formula = formula,
         data = data,
         method = 'glm.fit'),
     FUNtype = 'glm',
-    variables = colnames(rlogdata)[10:ncol(rlogdata)],
+    variables = colnames(rlddata)[10:ncol(rlddata)],
     p.adjust = "none")
 
   res3 <- RegParallel(
-    data = rlogdata,
+    data = rlddata,
     formula = '[*] ~ cell',
     FUN = function(formula, data)
       lm(formula = formula,
         data = data),
     FUNtype = 'lm',
-    variables = colnames(rlogdata)[10:ncol(rlogdata)],
+    variables = colnames(rlddata)[10:ncol(rlddata)],
     p.adjust = "none")
 
   subset(res2, P<0.05)
@@ -159,36 +163,9 @@ Regularised log counts from our <i>DESeq2</i> data will be used.
 
 ```
 
-
-
-## Perform the most basic negative binomial logistic regression analysis
-
-Here, we will utilise normalised, unlogged counts from <i>DESeq2</i>. Unlogged
-counts in RNA-seq naturally follow a negative binomial / Poisson-like
-distribution. <i>glm.nbParallel</i> will be used.
-
-```{r glm.nbParallel1}
-
-    nbcounts <- round(counts(dds, normalized = TRUE), 0)
-    nbdata <- data.frame(colData(airway), t(nbcounts))
-
-    res4 <- RegParallel(
-      data = nbdata[ ,1:3000],
-      formula = '[*] ~ dex',
-      FUN = function(formula, data)
-        glm.nb(formula = formula,
-          data = data),
-      FUNtype = 'glm.nb',
-      variables = colnames(nbdata)[10:3000],
-    p.adjust = "fdr")
-
-    res4[order(res4$Theta, decreasing = TRUE),]
-
-```
-
 ```{r, echo=FALSE}
 
-  rm(dds, nbdata, nbcounts, rlogdata, rlogcounts, data, airway)
+  rm(dds, rlddata, rldexpr, airway)
 
 ```
 
@@ -401,7 +378,7 @@ which also makes sense in relation to oestrogen signalling.
 
 
 ```{r, echo=FALSE}
-  rm(coxdata, data, x, gset, survplotdata, highExpr, lowExpr,
+  rm(coxdata, x, gset, survplotdata, highExpr, lowExpr,
     annotLookup, mart, final, probes, idx)
 ```
 
@@ -676,9 +653,7 @@ enabled, this translates to 9 simultaneous threads.
 *RegParallel* would not exist were it not for initial
 contributions from:
 
-[Jessica Lasky-Su](https://connects.catalyst.harvard.edu/Profiles/display/Person/79780),
-[Myles Lewis](https://www.qmul.ac.uk/whri/people/academic-staff/items/lewismyles.html),
-[Michael Barnes](https://www.qmul.ac.uk/whri/people/academic-staff/items/barnesmichael.html)
+* [Jessica Lasky-Su](https://connects.catalyst.harvard.edu/Profiles/display/Person/79780)
 
 Thanks also to Horacio Montenegro and GenoMax for testing.
 

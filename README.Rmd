@@ -250,7 +250,7 @@ We now take the top probes from the model by Log Rank p-value and use
   final <- subset(res5, LogRank < 0.01)
   probes <- gsub('^X', '', final$Variable)
   library(biomaRt)
-  mart <- useMart('ENSEMBL_MART_ENSEMBL')
+  mart <- useMart('ENSEMBL_MART_ENSEMBL', host = 'useast.ensembl.org')
   mart <- useDataset("hsapiens_gene_ensembl", mart)
   annotLookup <- getBM(mart = mart,
     attributes = c('affy_hg_u133a',
@@ -372,7 +372,7 @@ also adjust for age.
 
 ```
 
-Oestrogen receptor (<i>ESR1</i>) comes out top - makes sense! Also, although
+Oestrogen receptor (<i>ESR1</i>) comes out - makes sense! Also, although
 204667_at is not listed in <i>biomaRt</i>, it overlaps an exon of <i>FOXA1</i>,
 which also makes sense in relation to oestrogen signalling.
 
@@ -380,6 +380,7 @@ which also makes sense in relation to oestrogen signalling.
 ```{r, echo=FALSE}
   rm(coxdata, x, gset, survplotdata, highExpr, lowExpr,
     annotLookup, mart, final, probes, idx)
+  gc()
 ```
 
 
@@ -653,9 +654,11 @@ enabled, this translates to 9 simultaneous threads.
 *RegParallel* would not exist were it not for initial
 contributions from:
 
-* [Jessica Lasky-Su](https://connects.catalyst.harvard.edu/Profiles/display/Person/79780)
+Thanks to Horacio Montenegro and GenoMax for testing cross-platform differences, and Wolfgang Huber for providing the nudge that FDR correction needed to be implemented.
 
-Thanks also to Horacio Montenegro and GenoMax for testing.
+Thanks to Michael Barnes in London for introducing me to parallel processing in R.
+
+Finally, thanks to Juan Celedón at Children's Hospital of Pittsburgh.
 
 # Session info
 

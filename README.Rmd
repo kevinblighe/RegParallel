@@ -1,6 +1,6 @@
 ---
 title: "Standard regression functions in R enabled for parallel processing over large data-frames"
-author: "Kevin Blighe"
+author: "Kevin Blighe, Jessica Lasky-Su"
 date: "`r Sys.Date()`"
 package: "`r packageVersion('RegParallel')`"
 output:
@@ -651,10 +651,7 @@ enabled, this translates to 9 simultaneous threads.
 
 # Acknowledgments
 
-*RegParallel* would not exist were it not for initial
-contributions from:
-
-Thanks to Horacio Montenegro and GenoMax for testing cross-platform differences, and Wolfgang Huber for providing the nudge that FDR correction needed to be implemented.
+Thanks to Horácio Montenegro and GenoMax for testing cross-platform differences, and Wolfgang Huber for providing the nudge that FDR correction needed to be implemented.
 
 Thanks to Michael Barnes in London for introducing me to parallel processing in R.
 

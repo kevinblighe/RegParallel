@@ -248,7 +248,9 @@ up the analysis.
 We now take the top probes from the model by Log Rank p-value and use
 <i>biomaRt</i> to look up the corresponding gene symbols.
 
-```{r coxphParallel3}
+*not run*
+
+```{r coxphParallel3, eval = FALSE}
   res5 <- res5[order(res5$LogRank, decreasing = FALSE),]
   final <- subset(res5, LogRank < 0.01)
   probes <- gsub('^X', '', final$Variable)
@@ -329,7 +331,7 @@ conditional logistic regression with tumour grade as our grouping / matching
 factor. For this example, we will use ER status as the dependent variable and
 also adjust for age.
 
-```{r clogitParallel}
+```{r clogitParallel1}
 
   x <- exprs(gset[[1]])
   x <- x[-grep('^AFFX', rownames(x)),]
@@ -360,6 +362,11 @@ also adjust for age.
 
   subset(res6, P < 0.01)
 
+```
+
+*not run*
+
+```{r clogitParallel2, eval = FALSE}
   getBM(mart = mart,
     attributes = c('affy_hg_u133a',
       'ensembl_gene_id',

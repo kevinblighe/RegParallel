@@ -105,12 +105,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   )
 
   # spot checks
-  m <- clogit(formula = as.integer(group) ~ gene145 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
+  m <- clogit(formula = as.integer(factor(group)) ~ gene145 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.5)))
   res5[which(res5$Variable == 'gene145'),]
 
-  m <- clogit(formula = as.integer(group) ~ gene34 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
+  m <- clogit(formula = as.integer(factor(group)) ~ gene34 * strata(cell) + dosage, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.5)))
   res5[which(res5$Variable == 'gene34'),]

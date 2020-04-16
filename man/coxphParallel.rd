@@ -109,12 +109,12 @@ Kevin Blighe <kevin@clinicalbioinformatics.co.uk>
   )
 
   # spot checks
-  m <- coxph(formula = Surv(time, as.integer(alive)) ~ group * gene12 + cell, data = data, ties = 'breslow', singular.ok = TRUE)
+  m <- coxph(formula = Surv(time, as.integer(factor(alive))) ~ group * gene12 + cell, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.975)))
   res4[which(res4$Variable == 'gene12'),]
 
-  m <- coxph(formula = Surv(time, as.integer(alive)) ~ group * gene267 + cell, data = data, ties = 'breslow', singular.ok = TRUE)
+  m <- coxph(formula = Surv(time, as.integer(factor(alive))) ~ group * gene267 + cell, data = data, ties = 'breslow', singular.ok = TRUE)
   summary(m)
   exp(cbind("Odds ratio" = coef(m), confint.default(m, level = 0.975)))
   res4[which(res4$Variable == 'gene267'),]

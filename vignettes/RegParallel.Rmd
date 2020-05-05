@@ -38,7 +38,7 @@ regression.
 
 ```{r, echo=FALSE}
 
-    library(knitr)
+    suppressWarnings(library(knitr))
 
     opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
 

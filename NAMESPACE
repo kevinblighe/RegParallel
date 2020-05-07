@@ -1,5 +1,6 @@
 export('RegParallel')
 export('glmParallel')
+export('svyglmParallel')
 export('lmParallel')
 export('coxphParallel')
 export('clogitParallel')

@@ -1,5 +1,6 @@
 RegParallel <- function(
   data,
+  design = NULL,
   formula,
   FUN,
   FUNtype,
@@ -91,10 +92,11 @@ RegParallel <- function(
   }
 
   # determine number of blocks
-  blocks <- floor((length(variables)) / blocksize) + 1
-  if (blocksize == length(variables)) {
-    blocks <- 1
-  }
+  blocks <- ceiling(length(variables) / blocksize)
+  #blocks <- floor((length(variables)) / blocksize) + 1
+  #if (blocksize == length(variables)) {
+  #  blocks <- 1
+  #}
 
   #########
   # parsing the formula
@@ -180,6 +182,21 @@ RegParallel <- function(
   if (FUNtype == 'glm') {
     res <- glmParallel(
       data = data,
+      formula.list = formula.list,
+      FUN = FUN,
+      variables = variables,
+      terms = terms,
+      startIndex = startIndex,
+      blocksize = blocksize,
+      blocks = blocks,
+      APPLYFUN = APPLYFUN,
+      conflevel = conflevel,
+      excludeTerms = excludeTerms,
+      excludeIntercept = excludeIntercept)
+  } else if (FUNtype == 'svyglm') {
+    res <- svyglmParallel(
+      data = data,
+      design = design,
       formula.list = formula.list,
       FUN = FUN,
       variables = variables,

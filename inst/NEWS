@@ -1,7 +1,11 @@
 
+CHANGES IN VERSION 1.8.0
+------------------------
+ - added funtionality for include survey weights via survey::svyglm
+ - fixed bug whereby, in ceratin situations, an incorrect number of blocks would be calculated
+
 CHANGES IN VERSION 1.6.0
 ------------------------
- - vignette updates
  - removed glm.nb
 
 CHANGES IN VERSION 1.0.0

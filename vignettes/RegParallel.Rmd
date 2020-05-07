@@ -33,7 +33,7 @@ via 'nested' parallel processing.
 
 Works for logistic regression, linear regression, conditional logistic
 regression, Cox proportional hazards and survival models, and Bayesian logistic
-regression.
+regression. Also caters for generalised linear models that utilise survey weights created by the 'survey' CRAN package and that utilise 'survey::svyglm'.
 
 
 ```{r, echo=FALSE}

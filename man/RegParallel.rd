@@ -4,11 +4,12 @@
 
 \title{Standard regression functions in R enabled for parallel processing over large data-frames}
 
-\description{In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major bottleneck in these is the amount of time that it takes to complete these analyses. With RegParallel, a large number of tests can be performed simultaneously. On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing. Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, and Bayesian logistic regression.}
+\description{In many analyses, a large amount of variables have to be tested independently against the trait/endpoint of interest, and also adjusted for covariates and confounding factors at the same time. The major bottleneck in these is the amount of time that it takes to complete these analyses. With RegParallel, a large number of tests can be performed simultaneously. On a 12-core system, 144 variables can be tested simultaneously, with 1000s of variables processed in a matter of seconds via 'nested' parallel processing. Works for logistic regression, linear regression, conditional logistic regression, Cox proportional hazards and survival models, and Bayesian logistic regression. Also caters for generalised linear models that utilise survey weights created by the 'survey' CRAN package and that utilise 'survey::svyglm'.}
 
 \usage{
 RegParallel(
   data,
+  design = NULL,
   formula,
   FUN,
   FUNtype,
@@ -24,35 +25,37 @@ RegParallel(
 
 \arguments{
   \item{data}{A data-frame that contains all model terms to be tested.
-  Variables that have all zeros will, automatically, be removed. REQUIRED.}
+    Variables that have all zeros will, automatically, be removed. REQUIRED.}
+  \item{design}{A survey design, created by survey::svydesign. DEFAULT = NULL.
+    OPTIONAL.}
   \item{formula}{A valid formula. Excluding the '[*]' term, which is reserved
-  for RegParallel and indicates the position in the formula for the variable
-  of interest, must pass as.formula() check. REQUIRED.}
+    for RegParallel and indicates the position in the formula for the variable
+    of interest, must pass as.formula() check. REQUIRED.}
   \item{FUN}{Regression function. Must be of form, for example:
-  function(formula, data) glm(formula = formula, family=binomial, data = data).
-  REQUIRED.}
+    function(formula, data) glm(formula = formula, family=binomial, data = data).
+    REQUIRED.}
   \item{FUNtype}{Regression function type. Must be one of 'glm', 'lm',
-  'coxph', 'clogit', 'bayesglm', or 'glm.nb'. REQUIRED.}
+    'coxph', 'clogit', 'bayesglm', or 'glm.nb'. REQUIRED.}
   \item{variables}{Vector of variable names in data to be tested
-  independently. Each variable will take the place of '[*]' in the supplied
-  formula. REQUIRED.}
+    independently. Each variable will take the place of '[*]' in the supplied
+    formula. REQUIRED.}
   \item{blocksize}{Number of variables to test in each foreach loop.
-  DEFAULT = 500. OPTIONAL.}
+    DEFAULT = 500. OPTIONAL.}
   \item{cores}{CPU cores / threads. DEFAULT = 3. OPTIONAL.}
   \item{nestedParallel}{In RegParallel, parallelisation initially occurs at
-  the block level, ie., multiple blocks of models are processed in parallel.
-  If nestedParallel is enabled, a second level of parallelisation occurs
-  within each block in addition. Warning! - this doubles the usage of cores.
-  DEFAULT = FALSE. OPTIONAL.}
+    the block level, ie., multiple blocks of models are processed in parallel.
+    If nestedParallel is enabled, a second level of parallelisation occurs
+    within each block in addition. Warning! - this doubles the usage of cores.
+    DEFAULT = FALSE. OPTIONAL.}
   \item{p.adjust}{Method for adjusting p-values for false discovery rate. Must
-  be one of 'holm', 'hochberg', 'hommel', 'bonferroni', 'BH', 'BY', 'fdr',
-  'none'. See ?p.adjust for further details. DEFAULT = 'none'. OPTIONAL}
+    be one of 'holm', 'hochberg', 'hommel', 'bonferroni', 'BH', 'BY', 'fdr',
+    'none'. See ?p.adjust for further details. DEFAULT = 'none'. OPTIONAL}
   \item{conflevel}{Confidence level for calculating odds or hazard ratios.
-  DEFAULT = 95. OPTIONAL.}
+    DEFAULT = 95. OPTIONAL.}
   \item{excludeTerms}{Remove these terms from the final output. These will
-  simply be grepped out. DEFAULT = NULL. OPTIONAL.}
+    simply be grepped out. DEFAULT = NULL. OPTIONAL.}
   \item{excludeIntercept}{Remove intercept terms from the final output.
-  DEFAULT = TRUE. OPTIONAL.}
+    DEFAULT = TRUE. OPTIONAL.}
 }
 
 \details{

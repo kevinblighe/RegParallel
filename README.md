@@ -845,6 +845,8 @@ processing in R.
 
 Finally, thanks to Juan Celedón at Children’s Hospital of Pittsburgh.
 
+Sarega Gurudas, whose suggestion led to the implementation of survey weights via svyglm.
+
 # Session info
 
 ``` r

@@ -42,6 +42,8 @@ regression. Also caters for generalised linear models that utilise survey weight
 
     opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
 
+    Sys.setenv('VROOM_CONNECTION_SIZE' = 131072 * 2)
+
 ```
 
 # Installation

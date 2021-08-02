@@ -1,7 +1,7 @@
 Package: RegParallel
 Type: Package
 Title: Standard regression functions in R enabled for parallel processing over large data-frames
-Version: 1.11.2
+Version: 1.11.1
 Authors@R: c(
     person("Kevin", "Blighe", role = c("aut", "cre"), email = "kevin@clinicalbioinformatics.co.uk"),
     person("Sarega", "Gurudas", role = c("ctb")),

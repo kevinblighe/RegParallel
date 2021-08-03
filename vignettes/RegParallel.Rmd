@@ -42,8 +42,6 @@ regression. Also caters for generalised linear models that utilise survey weight
 
     opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
 
-    Sys.setenv('VROOM_CONNECTION_SIZE' = 131072 * 2)
-
 ```
 
 # Installation
@@ -186,6 +184,9 @@ grade in a Cox Proportional Hazards model.
 First, let's read in and prepare the data:
 
 ```{r coxphParallel1}
+
+  Sys.setenv('VROOM_CONNECTION_SIZE' = 128000000)
+
   library(Biobase)
   library(GEOquery)
   # load series and platform data from GEO
@@ -221,6 +222,7 @@ First, let's read in and prepare the data:
   coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
   coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
   coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
+
 ```
 
 With the data prepared, we can now apply a Cox Proportional Hazards model
@@ -230,6 +232,7 @@ In this we also increase the default blocksize to 2000 in order to speed
 up the analysis.
 
 ```{r coxphParallel2}
+
   library(survival)
   res5 <- RegParallel(
     data = coxdata,
@@ -245,6 +248,7 @@ up the analysis.
     p.adjust = "BH")
   res5 <- res5[!is.na(res5$P),]
   res5
+
 ```
 
 We now take the top probes from the model by Log Rank p-value and use

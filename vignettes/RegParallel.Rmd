@@ -36,11 +36,11 @@ regression, Cox proportional hazards and survival models, and Bayesian logistic
 regression. Also caters for generalised linear models that utilise survey weights created by the 'survey' CRAN package and that utilise 'survey::svyglm'.
 
 
-```{r, echo=FALSE}
+```{r, echo = FALSE}
 
-    suppressWarnings(library(knitr))
-
-    opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
+  suppressWarnings(library(knitr))
+  opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
+  Sys.setenv(VROOM_CONNECTION_SIZE = 20000000)
 
 ```
 
@@ -50,10 +50,10 @@ regression. Also caters for generalised linear models that utilise survey weight
 
 ```{r getPackage, eval=FALSE}
 
-    if (!requireNamespace('BiocManager', quietly = TRUE))
-        install.packages('BiocManager')
+  if (!requireNamespace('BiocManager', quietly = TRUE))
+    install.packages('BiocManager')
 
-    BiocManager::install('RegParallel')
+  BiocManager::install('RegParallel')
 
 ```
 
@@ -61,7 +61,7 @@ Note: to install development version:
 
 ```{r getPackageDevel, eval=FALSE}
 
-    devtools::install_github('kevinblighe/RegParallel')
+  remotes::install_github('kevinblighe/RegParallel')
 
 ```
 
@@ -69,7 +69,7 @@ Note: to install development version:
 
 ```{r Load, message=FALSE}
 
-    library(RegParallel)
+  library(RegParallel)
 
 ```
 
@@ -83,11 +83,11 @@ with dexamethasone.
 
 ```{r}
 
-    library(airway)
-    library(magrittr)
+  library(airway)
+  library(magrittr)
 
-    data('airway')
-    airway$dex %<>% relevel('untrt')
+  data('airway')
+  airway$dex %<>% relevel('untrt')
 
 ```
 
@@ -95,12 +95,12 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log expression
 
 ```{r}
 
-    library(DESeq2)
+  library(DESeq2)
 
-    dds <- DESeqDataSet(airway, design = ~ dex + cell)
-    dds <- DESeq(dds, betaPrior = FALSE)
-    rldexpr <- assay(rlog(dds, blind = FALSE))
-    rlddata <- data.frame(colData(airway), t(rldexpr))
+  dds <- DESeqDataSet(airway, design = ~ dex + cell)
+  dds <- DESeq(dds, betaPrior = FALSE)
+  rldexpr <- assay(rlog(dds, blind = FALSE))
+  rlddata <- data.frame(colData(airway), t(rldexpr))
 
 ```
 
@@ -112,19 +112,19 @@ with dexamethasone as the dependent variable.
 
 ```{r glmParallel1, echo = TRUE, eval = FALSE}
 
-    ## NOT RUN
+  ## NOT RUN
 
-    res1 <- RegParallel(
-      data = rlddata[ ,1:3000],
-      formula = 'dex ~ [*]',
-      FUN = function(formula, data)
-        glm(formula = formula,
-          data = data,
-          family = binomial(link = 'logit')),
-      FUNtype = 'glm',
-      variables = colnames(rlddata)[10:3000])
+  res1 <- RegParallel(
+    data = rlddata[ ,1:3000],
+    formula = 'dex ~ [*]',
+    FUN = function(formula, data)
+      glm(formula = formula,
+        data = data,
+        family = binomial(link = 'logit')),
+    FUNtype = 'glm',
+    variables = colnames(rlddata)[10:3000])
 
-    res1[order(res1$P, decreasing=FALSE),]
+  res1[order(res1$P, decreasing=FALSE),]
 
 ```
 
@@ -185,43 +185,50 @@ First, let's read in and prepare the data:
 
 ```{r coxphParallel1}
 
-  Sys.setenv('VROOM_CONNECTION_SIZE' = 128000000)
-
   library(Biobase)
   library(GEOquery)
+
   # load series and platform data from GEO
-  gset <- getGEO('GSE2990', GSEMatrix =TRUE, getGPL=FALSE)
-  x <- exprs(gset[[1]])
+    gset <- getGEO('GSE2990', GSEMatrix =TRUE, getGPL=FALSE)
+    x <- exprs(gset[[1]])
+
   # remove Affymetrix control probes
-  x <- x[-grep('^AFFX', rownames(x)),]
+    x <- x[-grep('^AFFX', rownames(x)),]
+
   # transform the expression data to Z scores
-  x <- t(scale(t(x)))
+    x <- t(scale(t(x)))
+
   # extract information of interest from the phenotype data (pdata)
-  idx <- which(colnames(pData(gset[[1]])) %in%
-    c('age:ch1', 'distant rfs:ch1', 'er:ch1',
-      'ggi:ch1', 'grade:ch1', 'node:ch1',
-      'size:ch1', 'time rfs:ch1'))
-  metadata <- data.frame(pData(gset[[1]])[,idx],
-    row.names = rownames(pData(gset[[1]])))
+    idx <- which(colnames(pData(gset[[1]])) %in%
+      c('age:ch1', 'distant rfs:ch1', 'er:ch1',
+        'ggi:ch1', 'grade:ch1', 'node:ch1',
+        'size:ch1', 'time rfs:ch1'))
+    metadata <- data.frame(pData(gset[[1]])[,idx],
+      row.names = rownames(pData(gset[[1]])))
+
   # remove samples from the pdata that have any NA value
-  discard <- apply(metadata, 1, function(x) any(is.na(x)))
-  metadata <- metadata[!discard,]
+    discard <- apply(metadata, 1, function(x) any(is.na(x)))
+    metadata <- metadata[!discard,]
+
   # filter the Z-scores expression data to match the samples in our pdata
-  x <- x[,which(colnames(x) %in% rownames(metadata))]
+    x <- x[,which(colnames(x) %in% rownames(metadata))]
+
   # check that sample names match exactly between pdata and Z-scores 
-  all((colnames(x) == rownames(metadata)) == TRUE)
+    all((colnames(x) == rownames(metadata)) == TRUE)
+
   # create a merged pdata and Z-scores object
-  coxdata <- data.frame(metadata, t(x))
+    coxdata <- data.frame(metadata, t(x))
+
   # tidy column names
-  colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
-    'GGI', 'Grade', 'Node',
-    'Size', 'Time.RFS')
+    colnames(coxdata)[1:8] <- c('Age', 'Distant.RFS', 'ER',
+      'GGI', 'Grade', 'Node', 'Size', 'Time.RFS')
+
   # prepare certain phenotypes
-  coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
-  coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
-  coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
-  coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
-  coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
+    coxdata$Age <- as.numeric(gsub('^KJ', '', coxdata$Age))
+    coxdata$Distant.RFS <- as.numeric(coxdata$Distant.RFS)
+    coxdata$ER <- factor(coxdata$ER, levels = c(0, 1))
+    coxdata$Grade <- factor(coxdata$Grade, levels = c(1, 2, 3))
+    coxdata$Time.RFS <- as.numeric(gsub('^KJX|^KJ', '', coxdata$Time.RFS))
 
 ```
 

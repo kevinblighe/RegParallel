@@ -48,7 +48,7 @@ regression. Also caters for generalised linear models that utilise survey weight
 
 ## 1. Download the package from Bioconductor
 
-```{r getPackage, eval=FALSE}
+```{r getPackage, eval = FALSE}
 
   if (!requireNamespace('BiocManager', quietly = TRUE))
     install.packages('BiocManager')
@@ -59,7 +59,7 @@ regression. Also caters for generalised linear models that utilise survey weight
 
 Note: to install development version:
 
-```{r getPackageDevel, eval=FALSE}
+```{r getPackageDevel, eval = FALSE}
 
   remotes::install_github('kevinblighe/RegParallel')
 
@@ -108,7 +108,6 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log expression
 
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>,
 with dexamethasone as the dependent variable.
-
 
 ```{r glmParallel1, echo = TRUE, eval = FALSE}
 
@@ -183,7 +182,7 @@ grade in a Cox Proportional Hazards model.
 
 First, let's read in and prepare the data:
 
-```{r coxphParallel1}
+```{r coxphParallel1, eval = FALSE}
 
   library(Biobase)
   library(GEOquery)
@@ -238,7 +237,7 @@ independently for each probe in the dataset against RFS.
 In this we also increase the default blocksize to 2000 in order to speed
 up the analysis.
 
-```{r coxphParallel2}
+```{r coxphParallel2, eval = FALSE}
 
   library(survival)
   res5 <- RegParallel(
@@ -291,7 +290,7 @@ colon cancer in
 We can further explore the role of these genes to RFS by dividing their
 gene expression Z-scores into tertiles for low, mid, and high expression:
 
-```{r coxphParallel4}
+```{r coxphParallel4, eval = FALSE}
   # extract RFS and probe data for downstream analysis
   survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
     'X203666_at', 'X205680_at')]
@@ -314,7 +313,7 @@ gene expression Z-scores into tertiles for low, mid, and high expression:
 
 Plot the survival curves and place Log Rank p-value in the plots:
 
-```{r coxphParallel5, fig.height = 6, fig.width = 6, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
+```{r coxphParallel5, fig.height = 6, fig.width = 6, fig.cap = "Survival analysis via Cox Proportional Hazards regression.", eval = FALSE}
   library(survminer)
   ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12,
     data = survplotdata),
@@ -344,7 +343,7 @@ conditional logistic regression with tumour grade as our grouping / matching
 factor. For this example, we will use ER status as the dependent variable and
 also adjust for age.
 
-```{r clogitParallel1}
+```{r clogitParallel1, eval = FALSE}
 
   x <- exprs(gset[[1]])
   x <- x[-grep('^AFFX', rownames(x)),]
@@ -400,7 +399,7 @@ Oestrogen receptor (<i>ESR1</i>) comes out - makes sense! Also, although
 which also makes sense in relation to oestrogen signalling.
 
 
-```{r, echo=FALSE}
+```{r, echo = FALSE, eval = FALSE}
   rm(coxdata, x, gset, survplotdata, highExpr, lowExpr,
     annotLookup, mart, final, probes, idx)
   gc()

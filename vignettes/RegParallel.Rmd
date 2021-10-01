@@ -40,7 +40,7 @@ regression. Also caters for generalised linear models that utilise survey weight
 
   suppressWarnings(library(knitr))
   opts_chunk$set(tidy = FALSE, message = FALSE, warning = FALSE)
-  Sys.setenv(VROOM_CONNECTION_SIZE = 20000000)
+  Sys.setenv(VROOM_CONNECTION_SIZE='512000')
 
 ```
 
@@ -109,7 +109,7 @@ Normalise the raw counts in <i>DESeq2</i> and produce regularised log expression
 Here, we fit a binomial logistic regression model to the data via <i>glmParallel</i>,
 with dexamethasone as the dependent variable.
 
-```{r glmParallel1, echo = TRUE, eval = FALSE}
+```{r glmParallel1, echo = TRUE}
 
   ## NOT RUN
 
@@ -165,7 +165,7 @@ Regularised log expression levels from our <i>DESeq2</i> data will be used.
 
 ```
 
-```{r, echo=FALSE}
+```{r, echo = FALSE}
 
   rm(dds, rlddata, rldexpr, airway)
 
@@ -182,7 +182,7 @@ grade in a Cox Proportional Hazards model.
 
 First, let's read in and prepare the data:
 
-```{r coxphParallel1, eval = FALSE}
+```{r coxphParallel1}
 
   library(Biobase)
   library(GEOquery)
@@ -237,7 +237,7 @@ independently for each probe in the dataset against RFS.
 In this we also increase the default blocksize to 2000 in order to speed
 up the analysis.
 
-```{r coxphParallel2, eval = FALSE}
+```{r coxphParallel2}
 
   library(survival)
   res5 <- RegParallel(
@@ -290,30 +290,33 @@ colon cancer in
 We can further explore the role of these genes to RFS by dividing their
 gene expression Z-scores into tertiles for low, mid, and high expression:
 
-```{r coxphParallel4, eval = FALSE}
+```{r coxphParallel4}
   # extract RFS and probe data for downstream analysis
-  survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
-    'X203666_at', 'X205680_at')]
-  colnames(survplotdata) <- c('Time.RFS', 'Distant.RFS',
-    'CXCL12', 'MMP10')
+    survplotdata <- coxdata[,c('Time.RFS', 'Distant.RFS',
+      'X203666_at', 'X205680_at')]
+    colnames(survplotdata) <- c('Time.RFS', 'Distant.RFS',
+      'CXCL12', 'MMP10')
+
   # set Z-scale cut-offs for high and low expression
-  highExpr <- 1.0
-  lowExpr <- 1.0
+    highExpr <- 1.0
+    lowExpr <- 1.0
+
   # encode the expression for CXCL12 and MMP10 as low, mid, and high
-  survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, 'High',
-    ifelse(x <= lowExpr, 'Low', 'Mid'))
-  survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, 'High',
-    ifelse(x <= lowExpr, 'Low', 'Mid'))
+    survplotdata$CXCL12 <- ifelse(survplotdata$CXCL12 >= highExpr, 'High',
+      ifelse(x <= lowExpr, 'Low', 'Mid'))
+    survplotdata$MMP10 <- ifelse(survplotdata$MMP10 >= highExpr, 'High',
+      ifelse(x <= lowExpr, 'Low', 'Mid'))
+
   # relevel the factors to have mid as the reference level
-  survplotdata$CXCL12 <- factor(survplotdata$CXCL12,
-    levels = c('Mid', 'Low', 'High'))
-  survplotdata$MMP10 <- factor(survplotdata$MMP10,
-    levels = c('Mid', 'Low', 'High'))
+    survplotdata$CXCL12 <- factor(survplotdata$CXCL12,
+      levels = c('Mid', 'Low', 'High'))
+    survplotdata$MMP10 <- factor(survplotdata$MMP10,
+      levels = c('Mid', 'Low', 'High'))
 ```
 
 Plot the survival curves and place Log Rank p-value in the plots:
 
-```{r coxphParallel5, fig.height = 6, fig.width = 6, fig.cap = "Survival analysis via Cox Proportional Hazards regression.", eval = FALSE}
+```{r coxphParallel5, fig.height = 6, fig.width = 6, fig.cap = "Survival analysis via Cox Proportional Hazards regression."}
   library(survminer)
   ggsurvplot(survfit(Surv(Time.RFS, Distant.RFS) ~ CXCL12,
     data = survplotdata),
@@ -343,7 +346,7 @@ conditional logistic regression with tumour grade as our grouping / matching
 factor. For this example, we will use ER status as the dependent variable and
 also adjust for age.
 
-```{r clogitParallel1, eval = FALSE}
+```{r clogitParallel1}
 
   x <- exprs(gset[[1]])
   x <- x[-grep('^AFFX', rownames(x)),]
@@ -399,7 +402,7 @@ Oestrogen receptor (<i>ESR1</i>) comes out - makes sense! Also, although
 which also makes sense in relation to oestrogen signalling.
 
 
-```{r, echo = FALSE, eval = FALSE}
+```{r, echo = FALSE}
   rm(coxdata, x, gset, survplotdata, highExpr, lowExpr,
     annotLookup, mart, final, probes, idx)
   gc()

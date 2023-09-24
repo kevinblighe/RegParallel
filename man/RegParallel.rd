@@ -35,7 +35,7 @@ RegParallel(
     function(formula, data) glm(formula = formula, family=binomial, data = data).
     REQUIRED.}
   \item{FUNtype}{Regression function type. Must be one of 'glm', 'lm',
-    'coxph', 'clogit', 'bayesglm', or 'glm.nb'. REQUIRED.}
+    'coxph', 'clogit', 'bayesglm', or 'svyglm'. REQUIRED.}
   \item{variables}{Vector of variable names in data to be tested
     independently. Each variable will take the place of '[*]' in the supplied
     formula. REQUIRED.}
